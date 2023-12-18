@@ -3,7 +3,7 @@ import {
   mat4,
 } from 'https://wgpu-matrix.org/dist/2.x/wgpu-matrix.module.js';
 import { getViewProjectionMatrix } from './camera.js';
-import { cubeGetVertices, cubeGetTriangles, cubeGetTriangleCount } from './cube.js';
+import { CubeMesh } from './CubeMesh.js';
 
 // Clear color for GPURenderPassDescriptor
 const clearColor = { r: 0.0, g: 0.5, b: 1.0, a: 1.0 };
@@ -57,22 +57,23 @@ async function render(gpuDevice, drawingContext) {
 	});
 
 	// 4 (a): Create vertex buffer to contain vertex data
-	const vertices = cubeGetVertices();
+	const cubeMesh = new CubeMesh()
+	const cubeVertices = cubeMesh.getVertices();
 	const vertexBuffer = gpuDevice.createBuffer({
-		size: vertices.byteLength, // make it big enough to store vertices in
+		size: cubeVertices.byteLength, // make it big enough to store vertices in
 		usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
 	});
 	// Copy the vertex data over to the GPUBuffer using the writeBuffer() utility function
-	gpuDevice.queue.writeBuffer(vertexBuffer, 0, vertices, 0, vertices.length);
+	gpuDevice.queue.writeBuffer(vertexBuffer, 0, cubeVertices, 0, cubeVertices.length);
 
 	// 4 (b): Create vertex buffer to contain vertex data
-	const triangles = cubeGetTriangles();
+	const triangles = cubeMesh.getTriangles();
 	const indexBuffer = gpuDevice.createBuffer({
 		size: triangles.byteLength,
 		usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
 	});
 	// Copy the index data over to the GPUBuffer using the writeBuffer() utility function
-	gpuDevice.queue.writeBuffer(indexBuffer, 0, triangles.buffer, 0, triangles.byteLength);
+	gpuDevice.queue.writeBuffer(indexBuffer, 0, triangles, 0, triangles.length);
 
 	// 5: Create a GPUVertexBufferLayout and GPURenderPipelineDescriptor to provide a definition of our render pipline
 	const vertexBuffers = [{
@@ -132,7 +133,8 @@ async function render(gpuDevice, drawingContext) {
 		mvpMatrixBuffer, mvpMatrixBuffer,
 		mvpMatrixBindGroup: mvpMatrixBindGroup,
 		vertexBuffer: vertexBuffer,
-		indexBuffer: indexBuffer
+		indexBuffer: indexBuffer,
+		indexCount: cubeMesh.getTriangleCount() * 3
 	}
 }
 
@@ -177,7 +179,7 @@ async function frame(gpuDevice, drawingContext, renderContext) {
 	passEncoder.setBindGroup(0, renderContext.mvpMatrixBindGroup);
 	passEncoder.setVertexBuffer(0, renderContext.vertexBuffer);
 	passEncoder.setIndexBuffer(renderContext.indexBuffer, "uint16");
-	passEncoder.drawIndexed(cubeGetTriangleCount() * 3);
+	passEncoder.drawIndexed(renderContext.indexCount);
 
 	// End the render pass
 	passEncoder.end();
