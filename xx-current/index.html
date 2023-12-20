@@ -1,15 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<title>WebGPU test</title>
- 		<script type="module" src="main.js" defer /></script>
-	</head>
-	<body style="background-color:black">
-		<div style="text-align:center">
-			<canvas id="gpuCanvas" width="800" height="600" 
-	    		style="border-width:2px; border-color:white; border-style:solid">
-	    	</canvas>
-		</div>
-	</body>
+
+<head>
+	<meta charset="utf-8">
+	<title>WebGPU test</title>
+	<script type="module" src="main.js" defer></script>
+	<style>
+		body {
+			background-color: black;
+			color: lightgray;
+		}
+
+		em {
+			color: lightcoral;
+			font-style: normal;
+		}
+
+		#main-div {
+			text-align: center
+		}
+
+		#gpu-canvas {
+			border-width: 2px;
+			border-color: white;
+			border-style: solid;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="main-div">
+		<canvas id="gpu-canvas" width="800" height="600"></canvas>
+		<p>Use <em>WASD</em> to move, <em>left mouse button</em> to look around and <em>R</em> to reset the camera.</p>
+	</div>
+</body>
+
 </html>

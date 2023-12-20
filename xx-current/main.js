@@ -37,7 +37,7 @@ async function initGpuDevice() {
 
 async function initDrawingContext(gpuDevice) {
 	// 2: Get reference to the canvas to render on
-	const canvas = document.querySelector('#gpuCanvas');
+	const canvas = document.querySelector('#gpu-canvas');
 	const context = canvas.getContext('webgpu');
 
 	context.configure({
