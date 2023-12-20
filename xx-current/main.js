@@ -1,9 +1,10 @@
 import {
-  vec3,
-  mat4,
+	vec3,
+	mat4,
 } from 'https://wgpu-matrix.org/dist/2.x/wgpu-matrix.module.js';
-import { getViewProjectionMatrix } from './camera.js';
+import { Camera } from './Camera.js';
 import { CubeMesh } from './CubeMesh.js';
+import { InputHandler } from './InputHandler.js';
 
 // Clear color for GPURenderPassDescriptor
 const clearColor = { r: 0.0, g: 0.5, b: 1.0, a: 1.0 };
@@ -12,7 +13,7 @@ const clearColor = { r: 0.0, g: 0.5, b: 1.0, a: 1.0 };
 
 async function loadShaders() {
 	var host = window.location.protocol + "//" + window.location.host;
-	const response = await fetch(host + '/shaders.wgsl', {cache: "no-store"});
+	const response = await fetch(host + '/shaders.wgsl', { cache: "no-store" });
 	const data = await response.text();
 	return data;
 }
@@ -49,6 +50,11 @@ async function initDrawingContext(gpuDevice) {
 }
 
 
+async function initInputHandler(htmlCanvas) {
+	return new InputHandler(htmlCanvas)
+}
+
+
 async function render(gpuDevice, drawingContext) {
 	// 3: Create a shader module from the shaders template literal
 	const shaders = await loadShaders();
@@ -77,14 +83,14 @@ async function render(gpuDevice, drawingContext) {
 
 	// 5: Create a GPUVertexBufferLayout and GPURenderPipelineDescriptor to provide a definition of our render pipline
 	const vertexBuffers = [{
-    	attributes: [{
-      		shaderLocation: 0, // position
-		    offset: 0,
+		attributes: [{
+			shaderLocation: 0, // position
+			offset: 0,
 			format: 'float32x4'
-	    }, {
-    		shaderLocation: 1, // color
-		    offset: 16,
-	    	format: 'float32x4'
+		}, {
+			shaderLocation: 1, // color
+			offset: 16,
+			format: 'float32x4'
 		}],
 		arrayStride: 32,
 		stepMode: 'vertex'
@@ -105,7 +111,7 @@ async function render(gpuDevice, drawingContext) {
 		},
 		primitive: {
 			topology: 'triangle-list',
-      		cullMode: 'back', // Backface culling
+			cullMode: 'back', // Backface culling
 		},
 		layout: 'auto'
 	};
@@ -115,20 +121,23 @@ async function render(gpuDevice, drawingContext) {
 
 	// 6(b): View Transformation
 	const mvpMatrixBuffer = gpuDevice.createBuffer({
-    	size: 4 * 16, // 4x4 matrix
-	    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+		size: 4 * 16, // 4x4 matrix
+		usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
 	});
 	const mvpMatrixBindGroup = gpuDevice.createBindGroup({
-    	layout: renderPipeline.getBindGroupLayout(0),
-	    entries: [
+		layout: renderPipeline.getBindGroupLayout(0),
+		entries: [
 			{
 				binding: 0,
 				resource: { buffer: mvpMatrixBuffer },
 			}
-    	]
+		]
 	});
 
+	const camera = new Camera();
+
 	return {
+		camera: camera,
 		pipeline: renderPipeline,
 		mvpMatrixBuffer, mvpMatrixBuffer,
 		mvpMatrixBindGroup: mvpMatrixBindGroup,
@@ -139,15 +148,15 @@ async function render(gpuDevice, drawingContext) {
 }
 
 async function frame(gpuDevice, drawingContext, renderContext) {
-	const vpMatrix = getViewProjectionMatrix(drawingContext.canvas);
+	const vpMatrix = renderContext.camera.getViewProjectionMatrix(drawingContext.canvas);
 	const modelMatrix = mat4.identity();
 	const rotation = Date.now() % 4000 / 4000 * (2 * Math.PI);
-    mat4.rotate(
+	mat4.rotate(
 		modelMatrix,
 		vec3.fromValues(1, 1, 0),
 		rotation,
 		modelMatrix
-    );
+	);
 	const mvpMatrix = mat4.multiply(vpMatrix, modelMatrix);
 
 	gpuDevice.queue.writeBuffer(
@@ -156,7 +165,7 @@ async function frame(gpuDevice, drawingContext, renderContext) {
 		mvpMatrix.buffer,
 		mvpMatrix.byteOffset,
 		mvpMatrix.byteLength
-    );
+	);
 
 	// 7: Create GPUCommandEncoder to issue commands to the GPU
 	// Note: render pass descriptor, command encoder, etc. are destroyed after use, fresh one needed for each frame.
@@ -164,16 +173,16 @@ async function frame(gpuDevice, drawingContext, renderContext) {
 
 	// 8: Create GPURenderPassDescriptor to tell WebGPU which texture to draw into, then initiate render pass
 	const renderPassDescriptor = {
-	colorAttachments: [{
-		clearValue: clearColor,
-		loadOp: 'clear',
+		colorAttachments: [{
+			clearValue: clearColor,
+			loadOp: 'clear',
 			storeOp: 'store',
 			view: drawingContext.getCurrentTexture().createView()
-    	}]
+		}]
 	};
 
 	const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
-    
+
 	// 9: Draw the cube
 	passEncoder.setPipeline(renderContext.pipeline);
 	passEncoder.setBindGroup(0, renderContext.mvpMatrixBindGroup);
@@ -191,8 +200,21 @@ async function frame(gpuDevice, drawingContext, renderContext) {
 async function main() {
 	const gpuDevice = await initGpuDevice();
 	const drawingContext = await initDrawingContext(gpuDevice);
+	const inputHandler = await initInputHandler(drawingContext.canvas)
 	const renderContext = await render(gpuDevice, drawingContext);
 	let timerId = setInterval(() => frame(gpuDevice, drawingContext, renderContext), 16);
+	let timerId2 = setInterval(() => {
+		const inputState = inputHandler.getInputState();
+		// console.log("Input State:" + JSON.stringify(inputState));
+		renderContext.camera.rotate(inputState.rotateLeftRight, inputState.rotateUpDown);
+		renderContext.camera.move(
+			(inputState.forward - inputState.backward) * 0.8, 
+			(inputState.right - inputState.left) * 0.8
+		);
+		if(inputState.resetCamera) {
+			renderContext.camera.reset();
+		}
+	}, 10);
 }
 
 main();
