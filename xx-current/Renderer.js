@@ -37,26 +37,22 @@ export class Renderer {
         });
         this.#gpuDevice.queue.writeBuffer(vertexBuffer, 0, meshVertices, 0, meshVertices.length);
 
-        // Create an index buffer for the faces of the mesh
-        const triangles = mesh.getTriangles();
-        const indexBuffer = this.#gpuDevice.createBuffer({
-            size: triangles.byteLength,
-            usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
-        });
-        this.#gpuDevice.queue.writeBuffer(indexBuffer, 0, triangles, 0, triangles.length);
-
         // Create a GPUVertexBufferLayout and GPURenderPipelineDescriptor to provide a definition of our render pipline
         const vertexBuffers = [{
             attributes: [{
                 shaderLocation: 0, // position
                 offset: 0,
-                format: 'float32x4'
+                format: 'float32x3'
             }, {
                 shaderLocation: 1, // color
-                offset: 16,
-                format: 'float32x4'
+                offset: 12,
+                format: 'float32x3'
+            },{
+                shaderLocation: 2, // color
+                offset: 24,
+                format: 'float32x3'
             }],
-            arrayStride: 32,
+            arrayStride: 36,
             stepMode: 'vertex'
         }];
 
@@ -85,7 +81,7 @@ export class Renderer {
 
         // Create a uniform buffer for the MVP (Model-View-Projection) matrix
         const mvpMatrixBuffer = this.#gpuDevice.createBuffer({
-            size: 4 * 16, // 4x4 matrix
+            size: 4 * 16 * 2, // two 4x4 matrices with 4 byte float values
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
         const mvpMatrixBindGroup = this.#gpuDevice.createBindGroup({
@@ -94,7 +90,7 @@ export class Renderer {
                 {
                     binding: 0,
                     resource: { buffer: mvpMatrixBuffer },
-                }
+                },
             ]
         });
 
@@ -103,8 +99,7 @@ export class Renderer {
             mvpMatrixBuffer, mvpMatrixBuffer,
             mvpMatrixBindGroup: mvpMatrixBindGroup,
             vertexBuffer: vertexBuffer,
-            indexBuffer: indexBuffer,
-            indexCount: mesh.getTriangleCount() * 3
+            vertexCount: mesh.getVertexCount(),
         }
     }
 
@@ -113,18 +108,25 @@ export class Renderer {
      * @param {GPUCanvasContext} drawingContext the canvas on which the frame is drawn
      */
     renderFrame(drawingContext) {
-        // Create MVP (Model-View-Projection) matrix
+        // Pass MVP (Model/View/Projection) matrices to the shader:
         const camera = this.#scene.getCamera();
         const vpMatrix = camera.getViewProjectionMatrix(drawingContext.canvas);
         const modelMatrix = this.#scene.getMeshModelMatrix();
-        const mvpMatrix = mat4.multiply(vpMatrix, modelMatrix);
 
         this.#gpuDevice.queue.writeBuffer(
             this.#context.mvpMatrixBuffer,
             0,
-            mvpMatrix.buffer,
-            mvpMatrix.byteOffset,
-            mvpMatrix.byteLength
+            vpMatrix.buffer,
+            vpMatrix.byteOffset,
+            vpMatrix.byteLength
+        );
+
+        this.#gpuDevice.queue.writeBuffer(
+            this.#context.mvpMatrixBuffer,
+            vpMatrix.byteLength,
+            modelMatrix.buffer,
+            modelMatrix.byteOffset,
+            modelMatrix.byteLength
         );
 
         // Create GPUCommandEncoder to issue commands to the GPU
@@ -147,8 +149,7 @@ export class Renderer {
         passEncoder.setPipeline(this.#context.pipeline);
         passEncoder.setBindGroup(0, this.#context.mvpMatrixBindGroup);
         passEncoder.setVertexBuffer(0, this.#context.vertexBuffer);
-        passEncoder.setIndexBuffer(this.#context.indexBuffer, "uint16");
-        passEncoder.drawIndexed(this.#context.indexCount);
+        passEncoder.draw(this.#context.vertexCount);
 
         // End the render pass
         passEncoder.end();

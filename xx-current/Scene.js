@@ -20,7 +20,7 @@ export class Scene {
 
     getMeshModelMatrix() {
         const modelMatrix = mat4.identity();
-        const rotation = Date.now() % 4000 / 4000 * (2 * Math.PI);
+        const rotation = Date.now() % 10000 / 10000 * (2 * Math.PI);
         mat4.rotate(
             modelMatrix,
             vec3.fromValues(1, 1, 0),
