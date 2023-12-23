@@ -1,6 +1,8 @@
 struct MvpMatrixBuffer {
-    vpMatrix: mat4x4<f32>,
-    modelMatrix: mat4x4<f32>,
+    // View-Projection Matrix
+    vpMatrix: mat4x4f,
+    modelMatrix: mat4x4f,
+    normalMatrix: mat3x3f
 }
 @binding(0) @group(0) var<uniform> mvp : MvpMatrixBuffer;
 
@@ -21,34 +23,43 @@ struct VertexOut {
 @vertex
 fn vertex_main(in: VertexIn) -> VertexOut {
     var output: VertexOut;
+
     var vec4WorldPosition = mvp.modelMatrix * vec4(in.position, 1.0);
     output.clipPosition = mvp.vpMatrix * vec4WorldPosition;
-    output.worldPosition = vec3(vec4WorldPosition[0], vec4WorldPosition[1], vec4WorldPosition[2]);
-    var vec4WorldNormal = mvp.modelMatrix * vec4(in.normal, 0.0);
-    output.normal =  vec3(vec4WorldNormal[0], vec4WorldNormal[1], vec4WorldNormal[2]);
+    output.worldPosition = vec3(vec4WorldPosition.xyz);
+
+    // The normal vectors cannot be multiplied with the model matrix. If the model matrix 
+    // performs non-uniform scaling, the normals would not be perpendicular to the surface anymore.
+    // See http://www.lighthouse3d.com/tutorials/glsl-12-tutorial/the-normal-matrix/
+    output.normal = mvp.normalMatrix * in.normal;
+
     output.color = in.color;
+
     return output;
 }
 
 // Fragment Shader: ------------------------------------------------------------
 @fragment
 fn fragment_main(in: VertexOut) -> @location(0) vec4f {
-    const lightPosition = vec3(2.0, 0.0, -2.0);
+    const lightPosition = vec3(0.0, -1.0, -2.0);
     const lightColor = vec3(1.0, 1.0, 1.0);
-    const lightRange = 5.0;
-    const ambientStrength = 0.2;
-    const diffuseStrength = 1.0;
-    
+    const lightRange = 4.0;
+    const ambientStrength = 0.4;
+    const diffuseStrength = 0.8;
+
     var lightDirection = lightPosition - in.worldPosition;
     var lightDistance = length(lightDirection);
-    var lightStrength = max(lightRange - lightDistance, 0.0) / lightRange;
 
-    var ambientColor = lightColor * ambientStrength * lightStrength;
-    var diffuseFactor = max(dot(normalize(lightDirection), in.normal), 0.0);
-    var diffuseColor = lightColor * diffuseStrength * diffuseFactor * lightStrength;
+    var resultLightColor: vec3f;
+    if lightRange < lightDistance {
+        resultLightColor = vec3(0.0, 0.0, 0.0);
+    } else {
+        var lightStrength = (lightRange - lightDistance) / lightRange;
+        var ambientColor = lightColor * ambientStrength;
+        var diffuseFactor = max(dot(normalize(lightDirection), in.normal), 0.0);
+        var diffuseColor = lightColor * diffuseStrength * diffuseFactor;
+        resultLightColor = (ambientColor + diffuseColor) * lightStrength;
+    }
 
-    return vec4(
-        in.color * (ambientColor + diffuseColor),
-        1.0
-    );
+    return vec4(in.color * resultLightColor, 1.0);
 }

@@ -1,10 +1,14 @@
 import {
+    mat3,
     mat4,
 } from 'https://wgpu-matrix.org/dist/2.x/wgpu-matrix.module.js';
 import { Scene } from './Scene.js';
 
 // Clear color for GPURenderPassDescriptor
 const clearColor = { r: 0.0, g: 0.5, b: 1.0, a: 1.0 };
+
+const mat3ByteLength = mat3.create().byteLength
+const mat4ByteLength = mat4.create().byteLength
 
 export class Renderer {
     #scene;
@@ -44,10 +48,10 @@ export class Renderer {
                 offset: 0,
                 format: 'float32x3'
             }, {
-                shaderLocation: 1, // color
+                shaderLocation: 1, // normal
                 offset: 12,
                 format: 'float32x3'
-            },{
+            }, {
                 shaderLocation: 2, // color
                 offset: 24,
                 format: 'float32x3'
@@ -81,7 +85,7 @@ export class Renderer {
 
         // Create a uniform buffer for the MVP (Model-View-Projection) matrix
         const mvpMatrixBuffer = this.#gpuDevice.createBuffer({
-            size: 4 * 16 * 2, // two 4x4 matrices with 4 byte float values
+            size: 2 * mat4ByteLength + mat3ByteLength,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
         const mvpMatrixBindGroup = this.#gpuDevice.createBindGroup({
@@ -112,6 +116,10 @@ export class Renderer {
         const camera = this.#scene.getCamera();
         const vpMatrix = camera.getViewProjectionMatrix(drawingContext.canvas);
         const modelMatrix = this.#scene.getMeshModelMatrix();
+        // The normal vectors cannot be multiplied with the model matrix. If the model matrix 
+        // performs non-uniform scaling, the normals would not be perpendicular to the surface anymore.
+        // See http://www.lighthouse3d.com/tutorials/glsl-12-tutorial/the-normal-matrix/
+        const normalMatrix = mat3.fromMat4(mat4.transpose(mat4.inverse(modelMatrix)));
 
         this.#gpuDevice.queue.writeBuffer(
             this.#context.mvpMatrixBuffer,
@@ -127,6 +135,13 @@ export class Renderer {
             modelMatrix.buffer,
             modelMatrix.byteOffset,
             modelMatrix.byteLength
+        );
+        this.#gpuDevice.queue.writeBuffer(
+            this.#context.mvpMatrixBuffer,
+            vpMatrix.byteLength + modelMatrix.byteLength,
+            normalMatrix.buffer,
+            normalMatrix.byteOffset,
+            normalMatrix.byteLength
         );
 
         // Create GPUCommandEncoder to issue commands to the GPU
