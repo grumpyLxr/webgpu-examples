@@ -1,5 +1,6 @@
 import {
     vec3,
+    mat4
 } from 'https://wgpu-matrix.org/dist/2.x/wgpu-matrix.module.js';
 
 const cubeVertices = [
@@ -58,10 +59,46 @@ const cubeColors = [
 
 export class CubeMesh {
     
+    #position = vec3.create(0.0, 0.0, 0.0);
+    #rotationAxis = vec3.create(1.0, 0.0, 0.0);
+    #rotationRad = 0.0;
     #vertexData
     
-    constructor() {
-        this.#calcVertexData(0.5, 64)
+    constructor(specularStrength = 1.0, specularShininess = 32.0) {
+        this.#calcVertexData(specularStrength, specularShininess)
+    }
+
+    moveTo(position) {
+        this.#position = position;
+    }
+
+    setRotation(rotationAxis, rotationRad) {
+        this.#rotationAxis = rotationAxis;
+        this.#rotationRad = rotationRad;
+    }
+
+    getVertices() {
+        return this.#vertexData;
+    }
+
+    getVertexCount() {
+        return this.#vertexData.length / 11;
+    }
+
+    getTriangleCount() {
+        return this.getVertexCount() / 3;
+    }
+
+    getModelMatrix() {
+        const modelMatrix = mat4.identity();
+        mat4.rotate(
+            modelMatrix,
+            this.#rotationAxis,
+            this.#rotationRad,
+            modelMatrix
+        );
+        mat4.translate(modelMatrix, this.#position, modelMatrix);
+        return modelMatrix;
     }
 
     #calcVertexData(specularStrength, specularShininess) {
@@ -94,17 +131,5 @@ export class CubeMesh {
             vd.push(specularShininess);
         }
         this.#vertexData = new Float32Array(vd)
-    }
-
-    getVertices() {
-        return this.#vertexData;
-    }
-
-    getVertexCount() {
-        return this.#vertexData.length / 11;
-    }
-
-    getTriangleCount() {
-        return this.getVertexCount() / 3;
     }
 }

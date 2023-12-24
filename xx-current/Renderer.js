@@ -163,7 +163,7 @@ export class Renderer {
         // Pass MVP (Model/View/Projection) matrices to the shader:
         const camera = this.#scene.getCamera();
         const vpMatrix = camera.getViewProjectionMatrix(drawingContext.canvas);
-        const modelMatrix = this.#scene.getMeshModelMatrix();
+        const modelMatrix = this.#scene.getMesh().getModelMatrix();
         // The normal vectors cannot be multiplied with the model matrix. If the model matrix 
         // performs non-uniform scaling, the normals would not be perpendicular to the surface anymore.
         // See http://www.lighthouse3d.com/tutorials/glsl-12-tutorial/the-normal-matrix/

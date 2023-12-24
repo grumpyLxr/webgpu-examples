@@ -10,7 +10,11 @@ import { InputState } from './InputHandler.js';
 export class Scene {
     #camera = new Camera();
     #cube = new CubeMesh();
-    #light = new Light();
+    #light = new Light(
+        vec3.create(0.0, -1.0, -2.0),
+        vec3.create(1.0, 1.0, 0.5),
+        4.0
+    );
 
     getCamera() {
         return this.#camera;
@@ -22,18 +26,6 @@ export class Scene {
 
     getLight() {
         return this.#light;
-    }
-
-    getMeshModelMatrix() {
-        const modelMatrix = mat4.identity();
-        const rotation = Date.now() % 10000 / 10000 * (2 * Math.PI);
-        mat4.rotate(
-            modelMatrix,
-            vec3.fromValues(1, 1, 0),
-            rotation,
-            modelMatrix
-        );
-        return modelMatrix;
     }
 
     /**
@@ -51,5 +43,8 @@ export class Scene {
         if (inputState.resetCamera) {
             this.#camera.reset();
         }
+
+        const rotation = Date.now() % 10000 / 10000 * (2 * Math.PI);
+        this.#cube.setRotation(vec3.fromValues(1, 1, 0), rotation)
     }
 }
