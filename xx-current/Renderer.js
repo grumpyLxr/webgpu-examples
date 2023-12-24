@@ -62,6 +62,57 @@ export class Renderer {
             stepMode: 'vertex'
         }];
 
+        // Create a uniform buffer for the MVP (Model-View-Projection) matrix
+        var mvpMatrixBufferLength = 2 * mat4ByteLength + mat3ByteLength + vec3ByteLength;
+        // round to a multiple of 16 to match wgsl struct size (see https://www.w3.org/TR/WGSL/#alignment-and-size).
+        mvpMatrixBufferLength = Math.ceil(mvpMatrixBufferLength / 16) * 16;
+        const mvpMatrixBuffer = this.#gpuDevice.createBuffer({
+            size: mvpMatrixBufferLength,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+
+        // Create a uniform buffer for the Light
+        var lightBufferLength = this.#scene.getLight().getBytes().byteLength;
+        // round to a multiple of 16 to match wgsl struct size (see https://www.w3.org/TR/WGSL/#alignment-and-size).
+        lightBufferLength = Math.ceil(lightBufferLength / 16) * 16;
+        const lightBuffer = this.#gpuDevice.createBuffer({
+            size: lightBufferLength,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+
+        const uniformBindGroupLayout = this.#gpuDevice.createBindGroupLayout({
+            entries: [
+                {
+                    binding: 0,
+                    visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+                    buffer: {
+                        type: "uniform",
+                    }
+                },
+                {
+                    binding: 1,
+                    visibility: GPUShaderStage.FRAGMENT,
+                    buffer: {
+                        type: "uniform",
+                    }
+                },
+            ],
+        });
+        const uniformBindGroup = this.#gpuDevice.createBindGroup({
+            layout: uniformBindGroupLayout,
+            entries: [
+                {
+                    binding: 0,
+                    resource: { buffer: mvpMatrixBuffer },
+                },
+                {
+                    binding: 1,
+                    resource: { buffer: lightBuffer },
+                },
+            ]
+        });
+
+        const pipelineLayout = this.#gpuDevice.createPipelineLayout({ bindGroupLayouts: [uniformBindGroupLayout] });
         const pipelineDescriptor = {
             vertex: {
                 module: shaderModule,
@@ -79,34 +130,16 @@ export class Renderer {
                 topology: 'triangle-list',
                 cullMode: 'back', // Backface culling
             },
-            layout: 'auto'
+            layout: pipelineLayout
         };
-
         // Create the actual render pipeline
         const renderPipeline = this.#gpuDevice.createRenderPipeline(pipelineDescriptor);
 
-        // Create a uniform buffer for the MVP (Model-View-Projection) matrix
-        var mvpMatrixBufferLength = 2 * mat4ByteLength + mat3ByteLength + vec3ByteLength;
-        // round to a multiple of 16 to match wgsl struct size (see https://www.w3.org/TR/WGSL/#alignment-and-size).
-        mvpMatrixBufferLength = Math.ceil(mvpMatrixBufferLength / 16) * 16;
-        const mvpMatrixBuffer = this.#gpuDevice.createBuffer({
-            size: mvpMatrixBufferLength,
-            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-        });
-        const mvpMatrixBindGroup = this.#gpuDevice.createBindGroup({
-            layout: renderPipeline.getBindGroupLayout(0),
-            entries: [
-                {
-                    binding: 0,
-                    resource: { buffer: mvpMatrixBuffer },
-                },
-            ]
-        });
-
         this.#context = {
             pipeline: renderPipeline,
-            mvpMatrixBuffer, mvpMatrixBuffer,
-            mvpMatrixBindGroup: mvpMatrixBindGroup,
+            mvpMatrixBuffer: mvpMatrixBuffer,
+            lightBuffer: lightBuffer,
+            uniformBindGroup: uniformBindGroup,
             vertexBuffer: vertexBuffer,
             vertexCount: mesh.getVertexCount(),
         }
@@ -157,6 +190,17 @@ export class Renderer {
             cameraPosition.byteLength
         );
 
+        // Pass Light data to the shader:
+        const light = this.#scene.getLight();
+        const lightBytes = light.getBytes();
+        this.#gpuDevice.queue.writeBuffer(
+            this.#context.lightBuffer,
+            0,
+            lightBytes.buffer,
+            lightBytes.byteOffset,
+            lightBytes.byteLength
+        );
+
         // Create GPUCommandEncoder to issue commands to the GPU
         // Note: render pass descriptor, command encoder, etc. are destroyed after use, fresh one needed for each frame.
         const commandEncoder = this.#gpuDevice.createCommandEncoder();
@@ -175,7 +219,7 @@ export class Renderer {
 
         // Draw the mesh
         passEncoder.setPipeline(this.#context.pipeline);
-        passEncoder.setBindGroup(0, this.#context.mvpMatrixBindGroup);
+        passEncoder.setBindGroup(0, this.#context.uniformBindGroup);
         passEncoder.setVertexBuffer(0, this.#context.vertexBuffer);
         passEncoder.draw(this.#context.vertexCount);
 

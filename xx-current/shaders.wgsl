@@ -8,6 +8,16 @@ struct MvpMatrixBuffer {
 }
 @binding(0) @group(0) var<uniform> mvp : MvpMatrixBuffer;
 
+struct Light {
+    position: vec3f,
+    color:vec3f,
+    range:f32,
+    ambientStrength:f32,
+    diffuseStrength:f32,
+    specularStrength:f32,
+}
+@binding(1) @group(0) var<uniform> light : Light;
+
 // Vertex Shader: ------------------------------------------------------------
 struct VertexIn {
     @location(0) position: vec3f,
@@ -44,35 +54,28 @@ fn vertex_main(in: VertexIn) -> VertexOut {
 @fragment
 fn fragment_main(in: VertexOut) -> @location(0) vec4f {
     // Local illumination with Phong lighting in world space:
-    const lightPosition = vec3(0.0, -1.0, -2.0);
-    const lightColor = vec3(1.0, 1.0, 1.0);
-    const lightRange = 4.0;
-    const ambientStrength = 0.4;
-    const diffuseStrength = 0.8;
-    const specularStrength = 0.3;
-
     const materialShininess = 32;
 
-    let relativeLightPosition = lightPosition - in.worldPosition;
+    let relativeLightPosition = light.position - in.worldPosition;
     let lightDistance = length(relativeLightPosition);
 
     var resultLightColor: vec3f;
-    if lightRange < lightDistance {
+    if light.range < lightDistance {
         resultLightColor = vec3(0.0, 0.0, 0.0);
     } else {
-        let lightStrength = (lightRange - lightDistance) / lightRange;
+        let lightStrength = (light.range - lightDistance) / light.range;
         let lightDirection = normalize(relativeLightPosition);
         let fragmentNormal = normalize(in.normal);
 
-        let ambientColor = lightColor * ambientStrength;
+        let ambientColor = light.color * light.ambientStrength;
 
         let diffuseFactor = max(dot(lightDirection, fragmentNormal), 0.0);
-        let diffuseColor = lightColor * diffuseStrength * diffuseFactor;
+        let diffuseColor = light.color * light.diffuseStrength * diffuseFactor;
 
         let viewDirection = normalize(mvp.cameraPosition - in.worldPosition);
         let reflectDirection = reflect(-lightDirection, fragmentNormal);
         let specularFactor = pow(max(dot(viewDirection, reflectDirection), 0.0), materialShininess);
-        let specularColor = lightColor * specularStrength * specularFactor;
+        let specularColor = light.color * light.specularStrength * specularFactor;
 
         resultLightColor = (ambientColor + diffuseColor + specularColor) * lightStrength;
     }

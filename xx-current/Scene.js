@@ -4,11 +4,13 @@ import {
 } from 'https://wgpu-matrix.org/dist/2.x/wgpu-matrix.module.js';
 import { Camera } from './Camera.js';
 import { CubeMesh } from './CubeMesh.js';
+import { Light } from './Light.js';
 import { InputState } from './InputHandler.js';
 
 export class Scene {
     #camera = new Camera();
     #cube = new CubeMesh();
+    #light = new Light();
 
     getCamera() {
         return this.#camera;
@@ -16,6 +18,10 @@ export class Scene {
 
     getMesh() {
         return this.#cube;
+    }
+
+    getLight() {
+        return this.#light;
     }
 
     getMeshModelMatrix() {
