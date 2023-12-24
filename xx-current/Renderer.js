@@ -57,8 +57,18 @@ export class Renderer {
                 shaderLocation: 2, // color
                 offset: 24,
                 format: 'float32x3'
+            },
+            {
+                shaderLocation: 3, // specularStrength
+                offset: 36,
+                format: 'float32'
+            },
+            {
+                shaderLocation: 4, // specularShininess
+                offset: 40,
+                format: 'float32'
             }],
-            arrayStride: 36,
+            arrayStride: 44,
             stepMode: 'vertex'
         }];
 
@@ -72,7 +82,7 @@ export class Renderer {
         });
 
         // Create a uniform buffer for the Light
-        var lightBufferLength = this.#scene.getLight().getBytes().byteLength;
+        var lightBufferLength = this.#scene.getLight().getLightData().byteLength;
         // round to a multiple of 16 to match wgsl struct size (see https://www.w3.org/TR/WGSL/#alignment-and-size).
         lightBufferLength = Math.ceil(lightBufferLength / 16) * 16;
         const lightBuffer = this.#gpuDevice.createBuffer({
@@ -192,7 +202,7 @@ export class Renderer {
 
         // Pass Light data to the shader:
         const light = this.#scene.getLight();
-        const lightBytes = light.getBytes();
+        const lightBytes = light.getLightData();
         this.#gpuDevice.queue.writeBuffer(
             this.#context.lightBuffer,
             0,

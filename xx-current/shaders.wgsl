@@ -22,7 +22,9 @@ struct Light {
 struct VertexIn {
     @location(0) position: vec3f,
     @location(1) normal: vec3f,
-    @location(2) color: vec3f
+    @location(2) color: vec3f,
+    @location(3) specularStrength: f32,
+    @location(4) specularShininess: f32,
 }
 
 struct VertexOut {
@@ -30,6 +32,8 @@ struct VertexOut {
     @location(0) worldPosition: vec3f,
     @location(1) normal: vec3f,
     @location(2) color: vec3f,
+    @location(3) specularStrength: f32,
+    @location(4) specularShininess: f32,
 }
 
 @vertex
@@ -46,6 +50,8 @@ fn vertex_main(in: VertexIn) -> VertexOut {
     output.normal = mvp.normalMatrix * in.normal;
 
     output.color = in.color;
+    output.specularStrength = in.specularStrength;
+    output.specularShininess = in.specularShininess;
 
     return output;
 }
@@ -74,8 +80,8 @@ fn fragment_main(in: VertexOut) -> @location(0) vec4f {
 
         let viewDirection = normalize(mvp.cameraPosition - in.worldPosition);
         let halfwayDirection = normalize(lightDirection + viewDirection);
-        let specularFactor = pow(max(dot(fragmentNormal, halfwayDirection), 0.0), materialShininess);
-        let specularColor = light.color * light.specularStrength * specularFactor;
+        let specularFactor = pow(max(dot(fragmentNormal, halfwayDirection), 0.0), in.specularShininess);
+        let specularColor = light.color * in.specularStrength * light.specularStrength * specularFactor;
 
         resultLightColor = (ambientColor + diffuseColor + specularColor) * lightStrength;
     }

@@ -57,13 +57,14 @@ const cubeColors = [
 
 
 export class CubeMesh {
+    
     #vertexData
-
+    
     constructor() {
-        this.#calcVertexData()
+        this.#calcVertexData(0.5, 64)
     }
 
-    #calcVertexData() {
+    #calcVertexData(specularStrength, specularShininess) {
         let vd = new Array()
         for (var i = 0; i < cubeFaces.length; i += 3) {
             const v1 = cubeVertices[cubeFaces[i + 0]];
@@ -77,14 +78,20 @@ export class CubeMesh {
             vd = vd.concat(Array.from(v1));
             vd = vd.concat(Array.from(normal));
             vd = vd.concat(Array.from(color));
+            vd.push(specularStrength);
+            vd.push(specularShininess);
 
             vd = vd.concat(Array.from(v2));
             vd = vd.concat(Array.from(normal));
             vd = vd.concat(Array.from(color));
+            vd.push(specularStrength);
+            vd.push(specularShininess);
             
             vd = vd.concat(Array.from(v3));
             vd = vd.concat(Array.from(normal));
             vd = vd.concat(Array.from(color));
+            vd.push(specularStrength);
+            vd.push(specularShininess);
         }
         this.#vertexData = new Float32Array(vd)
     }
@@ -94,7 +101,7 @@ export class CubeMesh {
     }
 
     getVertexCount() {
-        return this.#vertexData.length / 9;
+        return this.#vertexData.length / 11;
     }
 
     getTriangleCount() {
