@@ -17,6 +17,14 @@ export class Camera {
     }
 
     /**
+     * Returns the camera position.
+     * @returns {vec3} the camera position
+     */
+    getPosition() {
+        return this.#position
+    }
+
+    /**
      * Sets the camera to the initial position.
      */
     reset() {

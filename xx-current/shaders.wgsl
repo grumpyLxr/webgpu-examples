@@ -1,8 +1,10 @@
 struct MvpMatrixBuffer {
-    // View-Projection Matrix
+    // The View-Projection matrix
     vpMatrix: mat4x4f,
     modelMatrix: mat4x4f,
-    normalMatrix: mat3x3f
+    normalMatrix: mat3x3f,
+    // The position of the camera in world space
+    cameraPosition: vec3f
 }
 @binding(0) @group(0) var<uniform> mvp : MvpMatrixBuffer;
 
@@ -24,7 +26,7 @@ struct VertexOut {
 fn vertex_main(in: VertexIn) -> VertexOut {
     var output: VertexOut;
 
-    var vec4WorldPosition = mvp.modelMatrix * vec4(in.position, 1.0);
+    let vec4WorldPosition = mvp.modelMatrix * vec4(in.position, 1.0);
     output.clipPosition = mvp.vpMatrix * vec4WorldPosition;
     output.worldPosition = vec3(vec4WorldPosition.xyz);
 
@@ -41,24 +43,38 @@ fn vertex_main(in: VertexIn) -> VertexOut {
 // Fragment Shader: ------------------------------------------------------------
 @fragment
 fn fragment_main(in: VertexOut) -> @location(0) vec4f {
+    // Local illumination with Phong lighting in world space:
     const lightPosition = vec3(0.0, -1.0, -2.0);
     const lightColor = vec3(1.0, 1.0, 1.0);
     const lightRange = 4.0;
     const ambientStrength = 0.4;
     const diffuseStrength = 0.8;
+    const specularStrength = 0.3;
 
-    var lightDirection = lightPosition - in.worldPosition;
-    var lightDistance = length(lightDirection);
+    const materialShininess = 32;
+
+    let relativeLightPosition = lightPosition - in.worldPosition;
+    let lightDistance = length(relativeLightPosition);
 
     var resultLightColor: vec3f;
     if lightRange < lightDistance {
         resultLightColor = vec3(0.0, 0.0, 0.0);
     } else {
-        var lightStrength = (lightRange - lightDistance) / lightRange;
-        var ambientColor = lightColor * ambientStrength;
-        var diffuseFactor = max(dot(normalize(lightDirection), in.normal), 0.0);
-        var diffuseColor = lightColor * diffuseStrength * diffuseFactor;
-        resultLightColor = (ambientColor + diffuseColor) * lightStrength;
+        let lightStrength = (lightRange - lightDistance) / lightRange;
+        let lightDirection = normalize(relativeLightPosition);
+        let fragmentNormal = normalize(in.normal);
+
+        let ambientColor = lightColor * ambientStrength;
+
+        let diffuseFactor = max(dot(lightDirection, fragmentNormal), 0.0);
+        let diffuseColor = lightColor * diffuseStrength * diffuseFactor;
+
+        let viewDirection = normalize(mvp.cameraPosition - in.worldPosition);
+        let reflectDirection = reflect(-lightDirection, fragmentNormal);
+        let specularFactor = pow(max(dot(viewDirection, reflectDirection), 0.0), materialShininess);
+        let specularColor = lightColor * specularStrength * specularFactor;
+
+        resultLightColor = (ambientColor + diffuseColor + specularColor) * lightStrength;
     }
 
     return vec4(in.color * resultLightColor, 1.0);

@@ -51,8 +51,8 @@ const cubeColors = [
     vec3.fromValues(1, 0, 1),
     vec3.fromValues(1, 0, 1),
     // bottom
-    vec3.fromValues(1, 1, 1),
-    vec3.fromValues(1, 1, 1),
+    vec3.fromValues(0.5, 1, 0.5),
+    vec3.fromValues(0.5, 1, 0.5),
 ];
 
 

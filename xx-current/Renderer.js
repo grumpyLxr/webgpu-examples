@@ -1,4 +1,5 @@
 import {
+    vec3,
     mat3,
     mat4,
 } from 'https://wgpu-matrix.org/dist/2.x/wgpu-matrix.module.js';
@@ -7,6 +8,7 @@ import { Scene } from './Scene.js';
 // Clear color for GPURenderPassDescriptor
 const clearColor = { r: 0.0, g: 0.5, b: 1.0, a: 1.0 };
 
+const vec3ByteLength = vec3.create().byteLength
 const mat3ByteLength = mat3.create().byteLength
 const mat4ByteLength = mat4.create().byteLength
 
@@ -84,8 +86,11 @@ export class Renderer {
         const renderPipeline = this.#gpuDevice.createRenderPipeline(pipelineDescriptor);
 
         // Create a uniform buffer for the MVP (Model-View-Projection) matrix
+        var mvpMatrixBufferLength = 2 * mat4ByteLength + mat3ByteLength + vec3ByteLength;
+        // round to a multiple of 16 to match wgsl struct size (see https://www.w3.org/TR/WGSL/#alignment-and-size).
+        mvpMatrixBufferLength = Math.ceil(mvpMatrixBufferLength / 16) * 16;
         const mvpMatrixBuffer = this.#gpuDevice.createBuffer({
-            size: 2 * mat4ByteLength + mat3ByteLength,
+            size: mvpMatrixBufferLength,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
         const mvpMatrixBindGroup = this.#gpuDevice.createBindGroup({
@@ -120,6 +125,7 @@ export class Renderer {
         // performs non-uniform scaling, the normals would not be perpendicular to the surface anymore.
         // See http://www.lighthouse3d.com/tutorials/glsl-12-tutorial/the-normal-matrix/
         const normalMatrix = mat3.fromMat4(mat4.transpose(mat4.inverse(modelMatrix)));
+        const cameraPosition = camera.getPosition();
 
         this.#gpuDevice.queue.writeBuffer(
             this.#context.mvpMatrixBuffer,
@@ -142,6 +148,13 @@ export class Renderer {
             normalMatrix.buffer,
             normalMatrix.byteOffset,
             normalMatrix.byteLength
+        );
+        this.#gpuDevice.queue.writeBuffer(
+            this.#context.mvpMatrixBuffer,
+            vpMatrix.byteLength + modelMatrix.byteLength + normalMatrix.byteLength,
+            cameraPosition.buffer,
+            cameraPosition.byteOffset,
+            cameraPosition.byteLength
         );
 
         // Create GPUCommandEncoder to issue commands to the GPU
