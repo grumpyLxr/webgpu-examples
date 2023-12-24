@@ -53,8 +53,8 @@ fn vertex_main(in: VertexIn) -> VertexOut {
 // Fragment Shader: ------------------------------------------------------------
 @fragment
 fn fragment_main(in: VertexOut) -> @location(0) vec4f {
-    // Local illumination with Phong lighting in world space:
-    const materialShininess = 32;
+    // Local illumination with Blinn-Phong lighting in world space:
+    const materialShininess = 64;
 
     let relativeLightPosition = light.position - in.worldPosition;
     let lightDistance = length(relativeLightPosition);
@@ -73,8 +73,8 @@ fn fragment_main(in: VertexOut) -> @location(0) vec4f {
         let diffuseColor = light.color * light.diffuseStrength * diffuseFactor;
 
         let viewDirection = normalize(mvp.cameraPosition - in.worldPosition);
-        let reflectDirection = reflect(-lightDirection, fragmentNormal);
-        let specularFactor = pow(max(dot(viewDirection, reflectDirection), 0.0), materialShininess);
+        let halfwayDirection = normalize(lightDirection + viewDirection);
+        let specularFactor = pow(max(dot(fragmentNormal, halfwayDirection), 0.0), materialShininess);
         let specularColor = light.color * light.specularStrength * specularFactor;
 
         resultLightColor = (ambientColor + diffuseColor + specularColor) * lightStrength;
