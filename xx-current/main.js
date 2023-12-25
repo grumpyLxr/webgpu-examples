@@ -48,7 +48,12 @@ async function main() {
         const inputHandler = new InputHandler(drawingContext.canvas)
 
         await renderer.init()
-        setInterval(() => renderer.renderFrame(), 16);
+        setInterval(() => {
+            // Only render if the current browser tab is active.
+            if (!document.hidden) {
+                renderer.renderFrame()
+            }
+        }, 16);
         setInterval(() => {
             const inputState = inputHandler.getInputState();
             scene.updateScene(inputState)

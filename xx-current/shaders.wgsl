@@ -6,6 +6,12 @@ struct Uniforms {
 }
 @group(0) @binding(0) var<uniform> uni : Uniforms;
 
+struct ModelMatrices {
+    modelMatrix: mat4x4f,
+    normalMatrix: mat3x3f,
+}
+@group(1) @binding(0) var<uniform> matrices : ModelMatrices;
+
 struct Light {
     position: vec3f,
     color: vec3f,
@@ -14,13 +20,7 @@ struct Light {
     diffuseStrength: f32,
     specularStrength: f32,
 }
-@group(0) @binding(1) var<uniform> light : Light;
-
-struct ModelMatrices {
-    modelMatrix: mat4x4f,
-    normalMatrix: mat3x3f,
-}
-@group(1) @binding(0) var<uniform> matrices : ModelMatrices;
+@group(2) @binding(0) var<uniform> light : Light;
 
 // Vertex Shader: ------------------------------------------------------------
 struct VertexIn {

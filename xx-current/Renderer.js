@@ -83,33 +83,17 @@ export class Renderer {
             size: modelMatricesBufferLength,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
-        const modelMatricesBindGroupLayout = this.#gpuDevice.createBindGroupLayout({
-            entries: [
-                {
-                    binding: 0,
-                    visibility: GPUShaderStage.VERTEX,
-                    buffer: {
-                        type: "uniform",
-                    }
-                }
-            ],
-        });
+        const modelMatricesBindGroupLayout = utils.createUniformBindGroupLayout(this.#gpuDevice, [
+            { visibility: GPUShaderStage.VERTEX }
+        ]);
         const meshData = []
         var bindGroupOffset = 0;
         for (let mesh of meshes) {
-            const meshBindGroup = this.#gpuDevice.createBindGroup({
-                layout: modelMatricesBindGroupLayout,
-                entries: [
-                    {
-                        binding: 0,
-                        resource: {
-                            buffer: modelMatricesBuffer,
-                            offset: bindGroupOffset,
-                            size: modelMatrixByteLength,
-                        },
-                    }
-                ]
-            });
+            const meshBindGroup = utils.createBindGroup(this.#gpuDevice, modelMatricesBindGroupLayout, [
+                {
+                    buffer: modelMatricesBuffer, offset: bindGroupOffset, size: modelMatrixByteLength
+                }
+            ]);
             bindGroupOffset += utils.align(modelMatrixByteLength, 256)
             meshData.push({
                 bindGroup: meshBindGroup,
@@ -126,6 +110,12 @@ export class Renderer {
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
+        const uniformBindGroup = utils.createUniformBindGroup(this.#gpuDevice, [
+            { visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT },
+        ], [
+            { buffer: uniformBuffer },
+        ]);
+
         // Create a uniform buffer for the Light
         // round to a multiple of 16 to match wgsl struct size (see https://www.w3.org/TR/WGSL/#alignment-and-size).
         var lightBufferLength = utils.align(this.#scene.getLight().getLightData().byteLength, 16)
@@ -133,41 +123,14 @@ export class Renderer {
             size: lightBufferLength,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
-
-        const uniformBindGroupLayout = this.#gpuDevice.createBindGroupLayout({
-            entries: [
-                {
-                    binding: 0,
-                    visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-                    buffer: {
-                        type: "uniform",
-                    }
-                },
-                {
-                    binding: 1,
-                    visibility: GPUShaderStage.FRAGMENT,
-                    buffer: {
-                        type: "uniform",
-                    }
-                },
-            ],
-        });
-        const uniformBindGroup = this.#gpuDevice.createBindGroup({
-            layout: uniformBindGroupLayout,
-            entries: [
-                {
-                    binding: 0,
-                    resource: { buffer: uniformBuffer },
-                },
-                {
-                    binding: 1,
-                    resource: { buffer: lightBuffer },
-                },
-            ]
-        });
+        const lightBindGroup = utils.createUniformBindGroup(this.#gpuDevice, [
+            { visibility: GPUShaderStage.FRAGMENT }
+        ], [
+            { buffer: lightBuffer }
+        ]);
 
         const pipelineLayout = this.#gpuDevice.createPipelineLayout({
-            bindGroupLayouts: [uniformBindGroupLayout, modelMatricesBindGroupLayout]
+            bindGroupLayouts: [uniformBindGroup.layout, modelMatricesBindGroupLayout, lightBindGroup.layout]
         });
         const pipelineDescriptor = {
             vertex: {
@@ -205,14 +168,18 @@ export class Renderer {
         });
 
         this.#context = {
-            depthTexture: depthTexture,
             pipeline: renderPipeline,
+            depthTexture: depthTexture,
+
             uniformBuffer: uniformBuffer,
+            uniformBindGroup: uniformBindGroup.group,
+
             lightBuffer: lightBuffer,
-            uniformBindGroup: uniformBindGroup,
+            lightBindGroup: lightBindGroup.group,
+
+            vertexBuffer: vertexBuffer,
             meshData: meshData,
             modelMatricesBuffer: modelMatricesBuffer,
-            vertexBuffer: vertexBuffer,
         }
     }
 
@@ -306,6 +273,7 @@ export class Renderer {
         passEncoder.setPipeline(this.#context.pipeline);
         passEncoder.setVertexBuffer(0, this.#context.vertexBuffer);
         passEncoder.setBindGroup(0, this.#context.uniformBindGroup);
+        passEncoder.setBindGroup(2, this.#context.lightBindGroup);
 
         let firstVertex = 0;
         for (let m of this.#context.meshData) {
