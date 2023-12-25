@@ -6,14 +6,16 @@ import {
 const initialDirection = vec3.fromValues(0, 0, 1)
 
 export class Camera {
+    #initialPosition; // initial camera position
     #position; // camera position
     #yaw; // rotation left-right in radiant
     #pitch; // rotation up-down in radiant
     #direction; // the direction into which camera is looking; calculated from #yaw and #pitch
     #up; // the up vector of the camera
 
-    constructor() {
-        this.reset()
+    constructor(initialPosition) {
+        this.#initialPosition = vec3.copy(initialPosition);
+        this.reset();
     }
 
     /**
@@ -28,7 +30,7 @@ export class Camera {
      * Sets the camera to the initial position.
      */
     reset() {
-        this.#position = vec3.fromValues(0, 0, -4);
+        this.#position = vec3.copy(this.#initialPosition);
         this.#yaw = 0.0;
         this.#pitch = 0.0;
         this.#direction = vec3.copy(initialDirection);

@@ -5,25 +5,25 @@ import { Light } from './Light.js';
 import { InputState } from './InputHandler.js';
 
 export class Scene {
-    #camera = new Camera();
+    #camera = new Camera(vec3.create(0.0, 0.0, -5.0));
     #cubes = []
     #light = new Light(
-        vec3.create(0.0, -1.0, -2.0),
-        vec3.create(1.0, 1.0, 0.5),
-        4.0
+        vec3.create(0.0, -2.0, -3.0),
+        vec3.create(1.0, 1.0, 0.8),
+        8.0
     );
 
     constructor() {
         var c;
 
-        c = new CubeMesh(1.0, 32.0);
+        c = new CubeMesh(vec3.create(1.0, 1.0, 1.0), 1.0, 32.0);
         this.#cubes.push(c);
 
-        c = new CubeMesh(1.0, 32.0);
+        c = new CubeMesh(vec3.create(0.0, 1.0, 0.0), 1.0, 128.0);
         c.moveTo(vec3.create(-3.0, 0.0, 0.0));
         this.#cubes.push(c);
 
-        c = new CubeMesh(1.0, 32.0);
+        c = new CubeMesh(vec3.create(0.0, 0.0, 1.0), 1.0, 2.0);
         c.moveTo(vec3.create(3.0, 0.0, 0.0));
         this.#cubes.push(c);
     }

@@ -35,28 +35,6 @@ const cubeFaces = new Uint16Array([
     2, 5, 7,
 ])
 
-const cubeColors = [
-    // front
-    vec3.fromValues(1, 1, 0),
-    vec3.fromValues(1, 1, 0),
-    // left
-    vec3.fromValues(1, 1, 1),
-    vec3.fromValues(1, 1, 1),
-    // back
-    vec3.fromValues(0, 1, 1),
-    vec3.fromValues(0, 1, 1),
-    // right
-    vec3.fromValues(1, 1, 1),
-    vec3.fromValues(1, 1, 1),
-    // top
-    vec3.fromValues(1, 0, 1),
-    vec3.fromValues(1, 0, 1),
-    // bottom
-    vec3.fromValues(0.5, 1, 0.5),
-    vec3.fromValues(0.5, 1, 0.5),
-];
-
-
 export class CubeMesh {
 
     #position = vec3.create(0.0, 0.0, 0.0);
@@ -64,8 +42,11 @@ export class CubeMesh {
     #rotationRad = 0.0;
     #vertexData
 
-    constructor(specularStrength = 1.0, specularShininess = 32.0) {
-        this.#calcVertexData(specularStrength, specularShininess)
+    constructor(
+        color = vec3.create(1.0, 1.0, 1.0),
+        specularStrength = 1.0,
+        specularShininess = 32.0) {
+        this.#calcVertexData(color, specularStrength, specularShininess)
     }
 
     /**
@@ -105,13 +86,12 @@ export class CubeMesh {
         return modelMatrix;
     }
 
-    #calcVertexData(specularStrength, specularShininess) {
+    #calcVertexData(color, specularStrength, specularShininess) {
         let vd = new Array()
         for (var i = 0; i < cubeFaces.length; i += 3) {
             const v1 = cubeVertices[cubeFaces[i + 0]];
             const v2 = cubeVertices[cubeFaces[i + 1]];
             const v3 = cubeVertices[cubeFaces[i + 2]];
-            const color = cubeColors[i / 3];
             const d1 = vec3.sub(v1, v2);
             const d2 = vec3.sub(v1, v3);
             const normal = vec3.normalize(vec3.cross(d1, d2));

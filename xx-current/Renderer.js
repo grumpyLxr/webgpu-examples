@@ -306,9 +306,13 @@ export class Renderer {
         passEncoder.setPipeline(this.#context.pipeline);
         passEncoder.setVertexBuffer(0, this.#context.vertexBuffer);
         passEncoder.setBindGroup(0, this.#context.uniformBindGroup);
+
+        let firstVertex = 0;
         for (let m of this.#context.meshData) {
             passEncoder.setBindGroup(1, m.bindGroup);
-            passEncoder.draw(m.getVertexCount());
+            let vc = m.getVertexCount();
+            passEncoder.draw(vc, 1, firstVertex);
+            firstVertex += vc;
         }
 
         // End the render pass
