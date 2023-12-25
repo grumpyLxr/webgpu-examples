@@ -2,7 +2,7 @@ import {
     mat3,
     mat4,
 } from './imports/wgpu-matrix.module.js';
-import * as utils from './WebGpuUtils.js';
+import * as utils from './utils.js';
 import { Scene } from './Scene.js';
 
 // Clear color for GPURenderPassDescriptor
