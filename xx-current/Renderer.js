@@ -1,16 +1,12 @@
 import {
-    vec3,
     mat3,
     mat4,
-} from 'https://wgpu-matrix.org/dist/2.x/wgpu-matrix.module.js';
+} from './imports/wgpu-matrix.module.js';
+import * as utils from './WebGpuUtils.js';
 import { Scene } from './Scene.js';
 
 // Clear color for GPURenderPassDescriptor
 const clearColor = { r: 0.0, g: 0.5, b: 1.0, a: 1.0 };
-
-const vec3ByteLength = vec3.create().byteLength
-const mat3ByteLength = mat3.create().byteLength
-const mat4ByteLength = mat4.create().byteLength
 
 export class Renderer {
     #scene;
@@ -35,16 +31,21 @@ export class Renderer {
         });
 
         // Create vertex buffer to contain vertex data of the mesh
-        const mesh = this.#scene.getMesh()
-        const meshVertices = mesh.getVertices();
+        const meshes = this.#scene.getMeshes()
+        const vbByteSize = meshes.map(m => m.getVertices().byteLength).reduce((a, b) => a + b, 0);
         const vertexBuffer = this.#gpuDevice.createBuffer({
-            size: meshVertices.byteLength,
+            size: vbByteSize,
             usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
         });
-        this.#gpuDevice.queue.writeBuffer(vertexBuffer, 0, meshVertices, 0, meshVertices.length);
+        var vbOffset = 0;
+        for (let mesh of meshes) {
+            const meshVertices = mesh.getVertices();
+            this.#gpuDevice.queue.writeBuffer(vertexBuffer, vbOffset, meshVertices, 0, meshVertices.length);
+            vbOffset += meshVertices.byteLength;
+        }
 
         // Create a GPUVertexBufferLayout and GPURenderPipelineDescriptor to provide a definition of our render pipline
-        const vertexBuffers = [{
+        const vertexBufferLayout = [{
             attributes: [{
                 shaderLocation: 0, // position
                 offset: 0,
@@ -72,19 +73,59 @@ export class Renderer {
             stepMode: 'vertex'
         }];
 
-        // Create a uniform buffer for the MVP (Model-View-Projection) matrix
-        var mvpMatrixBufferLength = 2 * mat4ByteLength + mat3ByteLength + vec3ByteLength;
+        // Create Uniform Buffer and BindGroups for the model matrics:
+        var modelMatrixByteLength = utils.mat4ByteLength + utils.mat3ByteLength;
+        var modelMatricesBufferLength = utils.align(modelMatrixByteLength, 256) * meshes.length;
+        const modelMatricesBuffer = this.#gpuDevice.createBuffer({
+            size: modelMatricesBufferLength,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+        const modelMatricesBindGroupLayout = this.#gpuDevice.createBindGroupLayout({
+            entries: [
+                {
+                    binding: 0,
+                    visibility: GPUShaderStage.VERTEX,
+                    buffer: {
+                        type: "uniform",
+                    }
+                }
+            ],
+        });
+        const meshData = []
+        var bindGroupOffset = 0;
+        for (let mesh of meshes) {
+            const meshBindGroup = this.#gpuDevice.createBindGroup({
+                layout: modelMatricesBindGroupLayout,
+                entries: [
+                    {
+                        binding: 0,
+                        resource: {
+                            buffer: modelMatricesBuffer,
+                            offset: bindGroupOffset,
+                            size: modelMatrixByteLength,
+                        },
+                    }
+                ]
+            });
+            bindGroupOffset += utils.align(modelMatrixByteLength, 256)
+            meshData.push({
+                bindGroup: meshBindGroup,
+                getModelMatrix: function () { return mesh.getModelMatrix(); },
+                getVertexCount: function () { return mesh.getVertexCount() },
+            })
+        }
+
+        // Create a uniform buffer for the VP (View-Projection) matrix
         // round to a multiple of 16 to match wgsl struct size (see https://www.w3.org/TR/WGSL/#alignment-and-size).
-        mvpMatrixBufferLength = Math.ceil(mvpMatrixBufferLength / 16) * 16;
-        const mvpMatrixBuffer = this.#gpuDevice.createBuffer({
-            size: mvpMatrixBufferLength,
+        let uniformBufferLength = utils.align(utils.mat4ByteLength + utils.vec3ByteLength, 16);
+        const uniformBuffer = this.#gpuDevice.createBuffer({
+            size: uniformBufferLength,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
         // Create a uniform buffer for the Light
-        var lightBufferLength = this.#scene.getLight().getLightData().byteLength;
         // round to a multiple of 16 to match wgsl struct size (see https://www.w3.org/TR/WGSL/#alignment-and-size).
-        lightBufferLength = Math.ceil(lightBufferLength / 16) * 16;
+        var lightBufferLength = utils.align(this.#scene.getLight().getLightData().byteLength, 16)
         const lightBuffer = this.#gpuDevice.createBuffer({
             size: lightBufferLength,
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
@@ -113,7 +154,7 @@ export class Renderer {
             entries: [
                 {
                     binding: 0,
-                    resource: { buffer: mvpMatrixBuffer },
+                    resource: { buffer: uniformBuffer },
                 },
                 {
                     binding: 1,
@@ -122,12 +163,14 @@ export class Renderer {
             ]
         });
 
-        const pipelineLayout = this.#gpuDevice.createPipelineLayout({ bindGroupLayouts: [uniformBindGroupLayout] });
+        const pipelineLayout = this.#gpuDevice.createPipelineLayout({
+            bindGroupLayouts: [uniformBindGroupLayout, modelMatricesBindGroupLayout]
+        });
         const pipelineDescriptor = {
             vertex: {
                 module: shaderModule,
                 entryPoint: 'vertex_main',
-                buffers: vertexBuffers
+                buffers: vertexBufferLayout
             },
             fragment: {
                 module: shaderModule,
@@ -147,11 +190,12 @@ export class Renderer {
 
         this.#context = {
             pipeline: renderPipeline,
-            mvpMatrixBuffer: mvpMatrixBuffer,
+            uniformBuffer: uniformBuffer,
             lightBuffer: lightBuffer,
             uniformBindGroup: uniformBindGroup,
+            meshData: meshData,
+            modelMatricesBuffer: modelMatricesBuffer,
             vertexBuffer: vertexBuffer,
-            vertexCount: mesh.getVertexCount(),
         }
     }
 
@@ -163,15 +207,10 @@ export class Renderer {
         // Pass MVP (Model/View/Projection) matrices to the shader:
         const camera = this.#scene.getCamera();
         const vpMatrix = camera.getViewProjectionMatrix(drawingContext.canvas);
-        const modelMatrix = this.#scene.getMesh().getModelMatrix();
-        // The normal vectors cannot be multiplied with the model matrix. If the model matrix 
-        // performs non-uniform scaling, the normals would not be perpendicular to the surface anymore.
-        // See http://www.lighthouse3d.com/tutorials/glsl-12-tutorial/the-normal-matrix/
-        const normalMatrix = mat3.fromMat4(mat4.transpose(mat4.inverse(modelMatrix)));
         const cameraPosition = camera.getPosition();
 
         this.#gpuDevice.queue.writeBuffer(
-            this.#context.mvpMatrixBuffer,
+            this.#context.uniformBuffer,
             0,
             vpMatrix.buffer,
             vpMatrix.byteOffset,
@@ -179,22 +218,8 @@ export class Renderer {
         );
 
         this.#gpuDevice.queue.writeBuffer(
-            this.#context.mvpMatrixBuffer,
+            this.#context.uniformBuffer,
             vpMatrix.byteLength,
-            modelMatrix.buffer,
-            modelMatrix.byteOffset,
-            modelMatrix.byteLength
-        );
-        this.#gpuDevice.queue.writeBuffer(
-            this.#context.mvpMatrixBuffer,
-            vpMatrix.byteLength + modelMatrix.byteLength,
-            normalMatrix.buffer,
-            normalMatrix.byteOffset,
-            normalMatrix.byteLength
-        );
-        this.#gpuDevice.queue.writeBuffer(
-            this.#context.mvpMatrixBuffer,
-            vpMatrix.byteLength + modelMatrix.byteLength + normalMatrix.byteLength,
             cameraPosition.buffer,
             cameraPosition.byteOffset,
             cameraPosition.byteLength
@@ -211,6 +236,34 @@ export class Renderer {
             lightBytes.byteLength
         );
 
+
+        var modelMatricesBufferOffset = 0;
+        for (let meshData of this.#context.meshData) {
+            const modelMatrix = meshData.getModelMatrix();
+            // The normal vectors cannot be multiplied with the model matrix. If the model matrix 
+            // performs non-uniform scaling, the normals would not be perpendicular to the surface anymore.
+            // See http://www.lighthouse3d.com/tutorials/glsl-12-tutorial/the-normal-matrix/
+            const normalMatrix = mat3.fromMat4(mat4.transpose(mat4.inverse(modelMatrix)));
+            this.#gpuDevice.queue.writeBuffer(
+                this.#context.modelMatricesBuffer,
+                modelMatricesBufferOffset,
+                modelMatrix.buffer,
+                modelMatrix.byteOffset,
+                modelMatrix.byteLength
+            );
+            modelMatricesBufferOffset += modelMatrix.byteLength;
+            this.#gpuDevice.queue.writeBuffer(
+                this.#context.modelMatricesBuffer,
+                modelMatricesBufferOffset,
+                normalMatrix.buffer,
+                normalMatrix.byteOffset,
+                normalMatrix.byteLength
+            );
+            modelMatricesBufferOffset = utils.align(
+                modelMatricesBufferOffset + modelMatrix.byteLength + normalMatrix.byteLength, 256
+                );
+        }
+
         // Create GPUCommandEncoder to issue commands to the GPU
         // Note: render pass descriptor, command encoder, etc. are destroyed after use, fresh one needed for each frame.
         const commandEncoder = this.#gpuDevice.createCommandEncoder();
@@ -225,16 +278,19 @@ export class Renderer {
             }]
         };
 
+        // Draw the meshes
         const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
-
-        // Draw the mesh
         passEncoder.setPipeline(this.#context.pipeline);
-        passEncoder.setBindGroup(0, this.#context.uniformBindGroup);
         passEncoder.setVertexBuffer(0, this.#context.vertexBuffer);
-        passEncoder.draw(this.#context.vertexCount);
+        passEncoder.setBindGroup(0, this.#context.uniformBindGroup);
+        for (let m of this.#context.meshData) {
+            passEncoder.setBindGroup(1, m.bindGroup);
+            passEncoder.draw(m.getVertexCount());
+        }
 
         // End the render pass
         passEncoder.end();
+
 
         // End frame by passing array of command buffers to command queue for execution
         this.#gpuDevice.queue.submit([commandEncoder.finish()]);

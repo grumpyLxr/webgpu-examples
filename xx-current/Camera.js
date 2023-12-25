@@ -1,7 +1,7 @@
 import {
     vec3,
     mat4,
-} from 'https://wgpu-matrix.org/dist/2.x/wgpu-matrix.module.js';
+} from './imports/wgpu-matrix.module.js';
 
 const initialDirection = vec3.fromValues(0, 0, 1)
 
