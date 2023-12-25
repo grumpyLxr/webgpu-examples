@@ -26,7 +26,7 @@ export function createUniformBindGroupLayout(gpuDevice, entries) {
     });
 }
 
-export function createBindGroup(gpuDevice, layout, entries) {
+export function createBindGroupWithLayout(gpuDevice, layout, entries) {
     const completeEntries = entries.map((e, i) => {
         return {
             binding: i,
@@ -45,10 +45,30 @@ export function createBindGroup(gpuDevice, layout, entries) {
 
 export function createUniformBindGroup(gpuDevice, layoutEntries, entries) {
     const layout = createUniformBindGroupLayout(gpuDevice, layoutEntries);
-    const group = createBindGroup(gpuDevice, layout, entries);
+    const group = createBindGroupWithLayout(gpuDevice, layout, entries);
 
     return {
         layout: layout,
+        gropipelineup: group
+    }
+}
+
+export function createBindGroup(gpuDevice, pipeline, groupNumber, entries) {
+    const layout = pipeline.getBindGroupLayout(groupNumber);
+    const group = createBindGroupWithLayout(gpuDevice, layout, entries);
+
+    return {
+        number: groupNumber,
         group: group
     }
+}
+
+export function copyToBuffer(gpuDevice, buffer, data, offset = 0) {
+    gpuDevice.queue.writeBuffer(
+        buffer,
+        offset,
+        data.buffer,
+        data.byteOffset,
+        data.byteLength
+    )
 }
