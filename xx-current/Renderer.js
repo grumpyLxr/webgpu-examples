@@ -11,16 +11,19 @@ const clearColor = { r: 0.0, g: 0.5, b: 1.0, a: 1.0 };
 export class Renderer {
     #scene;
     #gpuDevice;
+    #drawingContext;
     #context;
 
     /**
      * Creates a new Renderer to render the given scene.
      * @param {GPUDevice} gpuDevice 
      * @param {Scene} scene 
+     * @param {GPUCanvasContext} drawingContext the canvas on which the frame is drawn
      */
-    constructor(gpuDevice, scene) {
+    constructor(gpuDevice, scene, drawingContext) {
         this.#scene = scene
         this.#gpuDevice = gpuDevice
+        this.#drawingContext = drawingContext;
     }
 
     async init() {
@@ -183,12 +186,26 @@ export class Renderer {
                 topology: 'triangle-list',
                 cullMode: 'back', // Backface culling
             },
-            layout: pipelineLayout
+            layout: pipelineLayout,
+            // Enable depth testing so that the fragment closest to the camera
+            // is rendered in front.
+            depthStencil: {
+                depthWriteEnabled: true,
+                depthCompare: 'less',
+                format: 'depth24plus',
+            },
         };
         // Create the actual render pipeline
         const renderPipeline = this.#gpuDevice.createRenderPipeline(pipelineDescriptor);
 
+        const depthTexture = this.#gpuDevice.createTexture({
+            size: [this.#drawingContext.canvas.width, this.#drawingContext.canvas.height],
+            format: 'depth24plus',
+            usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        });
+
         this.#context = {
+            depthTexture: depthTexture,
             pipeline: renderPipeline,
             uniformBuffer: uniformBuffer,
             lightBuffer: lightBuffer,
@@ -201,12 +218,11 @@ export class Renderer {
 
     /**
      * Renders the next frame.
-     * @param {GPUCanvasContext} drawingContext the canvas on which the frame is drawn
      */
-    renderFrame(drawingContext) {
+    renderFrame() {
         // Pass MVP (Model/View/Projection) matrices to the shader:
         const camera = this.#scene.getCamera();
-        const vpMatrix = camera.getViewProjectionMatrix(drawingContext.canvas);
+        const vpMatrix = camera.getViewProjectionMatrix(this.#drawingContext.canvas);
         const cameraPosition = camera.getPosition();
 
         this.#gpuDevice.queue.writeBuffer(
@@ -261,7 +277,7 @@ export class Renderer {
             );
             modelMatricesBufferOffset = utils.align(
                 modelMatricesBufferOffset + modelMatrix.byteLength + normalMatrix.byteLength, 256
-                );
+            );
         }
 
         // Create GPUCommandEncoder to issue commands to the GPU
@@ -274,8 +290,15 @@ export class Renderer {
                 clearValue: clearColor,
                 loadOp: 'clear',
                 storeOp: 'store',
-                view: drawingContext.getCurrentTexture().createView()
-            }]
+                view: this.#drawingContext.getCurrentTexture().createView()
+            }],
+            depthStencilAttachment: {
+                view: this.#context.depthTexture.createView(),
+
+                depthClearValue: 1.0,
+                depthLoadOp: 'clear',
+                depthStoreOp: 'store',
+            }
         };
 
         // Draw the meshes

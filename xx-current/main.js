@@ -44,11 +44,11 @@ async function main() {
         const drawingContext = await initDrawingContext(gpuDevice);
 
         const scene = new Scene();
-        const renderer = new Renderer(gpuDevice, scene);
+        const renderer = new Renderer(gpuDevice, scene, drawingContext);
         const inputHandler = new InputHandler(drawingContext.canvas)
 
         await renderer.init()
-        setInterval(() => renderer.renderFrame(drawingContext), 16);
+        setInterval(() => renderer.renderFrame(), 16);
         setInterval(() => {
             const inputState = inputHandler.getInputState();
             scene.updateScene(inputState)
