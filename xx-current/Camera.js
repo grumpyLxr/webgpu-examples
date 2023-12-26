@@ -3,7 +3,8 @@ import {
     mat4,
 } from './imports/wgpu-matrix.module.js';
 
-const initialDirection = vec3.fromValues(0, 0, 1)
+const initialDirection = vec3.fromValues(0, 0, 1);
+const pitchMax = (Math.PI / 2) * 0.95;
 
 export class Camera {
     #initialPosition; // initial camera position
@@ -47,9 +48,12 @@ export class Camera {
      * @param {number} pitchDelta the ammount to rotate up (positive number) or down (negative number) in radian
      */
     rotate(yawDelta, pitchDelta) {
+        if(yawDelta == 0 && pitchDelta == 0) {
+            return;
+        }
+
         this.#yaw += yawDelta
-        this.#pitch += pitchDelta
-        this.#pitch = Math.min(Math.PI - 0.1, Math.max(-(Math.PI - 0.1), this.#pitch));
+        this.#pitch = Math.min(pitchMax, Math.max(-pitchMax, this.#pitch + pitchDelta));
 
         const rot = mat4.identity();
         mat4.rotateY(rot, this.#yaw, rot);

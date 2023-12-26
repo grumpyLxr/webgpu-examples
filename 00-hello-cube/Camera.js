@@ -3,7 +3,8 @@ import {
     mat4,
 } from 'https://wgpu-matrix.org/dist/2.x/wgpu-matrix.module.js';
 
-const initialDirection = vec3.fromValues(0, 0, 1)
+const initialDirection = vec3.fromValues(0, 0, 1);
+const pitchMax = (Math.PI / 2) * 0.95;
 
 export class Camera {
     #position; // camera position
@@ -34,8 +35,7 @@ export class Camera {
      */
     rotate(yawDelta, pitchDelta) {
         this.#yaw += yawDelta
-        this.#pitch += pitchDelta
-        this.#pitch = Math.min(Math.PI - 0.1, Math.max(-(Math.PI - 0.1), this.#pitch));
+        this.#pitch = Math.min(pitchMax, Math.max(-pitchMax, this.#pitch + pitchDelta));
 
         const rot = mat4.identity();
         mat4.rotateY(rot, this.#yaw, rot);

@@ -5,7 +5,7 @@ import { Light } from './Light.js';
 import { InputState } from './InputHandler.js';
 
 export class Scene {
-    #camera = new Camera(vec3.create(0.0, 0.0, -5.0));
+    #camera = new Camera(vec3.create(0.0, 0.0, -6.0));
     #cubes = [];
     #lights = [];
 
