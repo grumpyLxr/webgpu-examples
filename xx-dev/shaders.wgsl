@@ -7,7 +7,8 @@ struct Camera {
 @group(0) @binding(0) var<uniform> camera : Camera;
 
 @group(0) @binding(1) var texSampler: sampler;
-@group(0) @binding(2) var theTexture: texture_2d<f32>;
+@group(0) @binding(2) var colorTexture: texture_2d<f32>;
+@group(0) @binding(3) var specularTexture: texture_2d<f32>;
 
 struct ModelMatrices {
     modelMatrix: mat4x4f,
@@ -104,12 +105,14 @@ fn fragment_main(in: VertexOut) -> @location(0) vec4f {
     let fragmentNormal = normalize(in.normal);
 
     var lightColor = vec3(0.0, 0.0, 0.0);
+    // we expect the specular strength to be in the red channel
+    let specularStrength = textureSample(specularTexture, texSampler, in.texCoord).r;
     for (var i:u32 = 0; i < arrayLength(&lights); i += 1) {
         lightColor += calcPointLight(
-            lights[i], in.worldPosition, fragmentNormal, viewDirection, in.specularStrength, in.specularShininess
+            lights[i], in.worldPosition, fragmentNormal, viewDirection, specularStrength, in.specularShininess
         );
     }
 
-    let matColor = textureSample(theTexture, texSampler, in.texCoord);
+    let matColor = textureSample(colorTexture, texSampler, in.texCoord);
     return matColor * vec4(lightColor, 1.0);
 }

@@ -121,10 +121,17 @@ export class Renderer {
         });
 
         // Create a sampler with linear filtering
-        const sampler = gpuDevice.createSampler({ magFilter: 'linear', minFilter: 'linear' });
+        const sampler = gpuDevice.createSampler({ 
+            magFilter: 'linear',
+            minFilter: 'linear',
+            addressModeU: "repeat",
+            addressModeV: "repeat",
+        });
         // Load Images and create textures:
-        const colorBitmap = await this.#loadImage('color.png');
+        const colorBitmap = await this.#loadImage('checkboard-color.png');
         const colorTexture = utils.createTextureFromBitmap(gpuDevice, colorBitmap);
+        const specularBitmap = await this.#loadImage('checkboard-specular.png');
+        const specularTexture = utils.createTextureFromBitmap(gpuDevice, specularBitmap, 'r');
 
         // Create a uniform buffer for the VP (View-Projection) matrix
         // round to a multiple of 16 to match wgsl struct size (see https://www.w3.org/TR/WGSL/#alignment-and-size).
@@ -136,7 +143,8 @@ export class Renderer {
         const uniformBindGroup = utils.createBindGroup(gpuDevice, renderPipeline, 0, [
             { buffer: cameraBuffer },
             sampler,
-            colorTexture.createView()
+            colorTexture.createView(),
+            specularTexture.createView()
         ]);
         const cameraData = {
             bindGroup: uniformBindGroup,
@@ -288,7 +296,9 @@ export class Renderer {
     async #loadImage(fileName) {
         var host = window.location.protocol + "//" + window.location.host;
         const response = await fetch(host + '/assets/' + fileName, { cache: "no-store" });
-        const bitmap = await createImageBitmap(await response.blob());
+        const bitmap = await createImageBitmap(
+            await response.blob(), { colorSpaceConversion: 'none' }
+        );
         return bitmap;
     }
 }

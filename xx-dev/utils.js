@@ -78,10 +78,10 @@ export function copyToBuffer(gpuDevice, buffer, data, offset = 0) {
  * @param {ImageBitmap} bitmap the bitmap
  * @returns {GPUTexture} the texture
  */
-export function createTextureFromBitmap(gpuDevice, bitmap) {
+export function createTextureFromBitmap(gpuDevice, bitmap, bitmapFormat = 'rgba') {
     const texture = gpuDevice.createTexture({
         size: [bitmap.width, bitmap.height, 1],
-        format: 'rgba8unorm',
+        format: bitmapFormat + '8unorm',
         usage: GPUTextureUsage.TEXTURE_BINDING |
             GPUTextureUsage.RENDER_ATTACHMENT |
             GPUTextureUsage.COPY_DST,
