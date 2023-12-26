@@ -72,16 +72,11 @@ export class Renderer {
                 format: 'float32x2'
             },
             {
-                shaderLocation: 3, // specularStrength
+                shaderLocation: 3, // specularShininess
                 offset: 32,
                 format: 'float32'
-            },
-            {
-                shaderLocation: 4, // specularShininess
-                offset: 36,
-                format: 'float32'
             }],
-            arrayStride: 40,
+            arrayStride: 36,
             stepMode: 'vertex'
         }];
 

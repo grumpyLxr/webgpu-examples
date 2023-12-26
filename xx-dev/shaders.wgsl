@@ -31,8 +31,7 @@ struct VertexIn {
     @location(0) position: vec3f,
     @location(1) normal: vec3f,
     @location(2) texCoord: vec2f,
-    @location(3) specularStrength: f32,
-    @location(4) specularShininess: f32,
+    @location(3) specularShininess: f32,
 }
 
 struct VertexOut {
@@ -40,8 +39,7 @@ struct VertexOut {
     @location(0) worldPosition: vec3f,
     @location(1) normal: vec3f,
     @location(2) texCoord: vec2f,
-    @location(3) specularStrength: f32,
-    @location(4) specularShininess: f32,
+    @location(3) specularShininess: f32,
 }
 
 @vertex
@@ -58,7 +56,6 @@ fn vertex_main(in: VertexIn) -> VertexOut {
     output.normal = matrices.normalMatrix * in.normal;
 
     output.texCoord = in.texCoord;
-    output.specularStrength = in.specularStrength;
     output.specularShininess = in.specularShininess;
 
     return output;

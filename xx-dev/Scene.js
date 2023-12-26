@@ -11,14 +11,14 @@ export class Scene {
 
     constructor() {
         var c;
-        c = new CubeMesh(vec3.create(1.0, 1.0, 1.0), 1.0, 32.0);
+        c = new CubeMesh(32.0);
         this.#cubes.push(c);
 
-        c = new CubeMesh(vec3.create(0.0, 1.0, 0.0), 1.0, 128.0);
+        c = new CubeMesh(128.0);
         c.moveTo(vec3.create(-3.0, 0.0, 0.0));
         this.#cubes.push(c);
 
-        c = new CubeMesh(vec3.create(0.0, 0.0, 1.0), 1.0, 2.0);
+        c = new CubeMesh(2.0);
         c.moveTo(vec3.create(3.0, 0.0, 0.0));
         this.#cubes.push(c);
 

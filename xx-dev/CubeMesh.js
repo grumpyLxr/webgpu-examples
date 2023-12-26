@@ -53,11 +53,8 @@ export class CubeMesh {
     #rotationRad = 0.0;
     #vertexData
 
-    constructor(
-        color = vec3.create(1.0, 1.0, 1.0),
-        specularStrength = 1.0,
-        specularShininess = 32.0) {
-        this.#calcVertexData(color, specularStrength, specularShininess)
+    constructor(specularShininess = 32.0) {
+        this.#calcVertexData(specularShininess)
     }
 
     /**
@@ -83,7 +80,7 @@ export class CubeMesh {
     }
 
     getVertexCount() {
-        return this.#vertexData.length / 10;
+        return this.#vertexData.length / 9;
     }
 
     getTriangleCount() {
@@ -102,7 +99,7 @@ export class CubeMesh {
         return modelMatrix;
     }
 
-    #calcVertexData(color, specularStrength, specularShininess) {
+    #calcVertexData(specularShininess) {
         let vd = new Array()
         for (var i = 0; i < cubeFaces.length; i += 3) {
             const v1 = cubeVertices[cubeFaces[i + 0]];
@@ -119,19 +116,16 @@ export class CubeMesh {
             vd = vd.concat(Array.from(v1));
             vd = vd.concat(Array.from(normal));
             vd = vd.concat(Array.from(t1));
-            vd.push(specularStrength);
             vd.push(specularShininess);
 
             vd = vd.concat(Array.from(v2));
             vd = vd.concat(Array.from(normal));
             vd = vd.concat(Array.from(t2));
-            vd.push(specularStrength);
             vd.push(specularShininess);
 
             vd = vd.concat(Array.from(v3));
             vd = vd.concat(Array.from(normal));
             vd = vd.concat(Array.from(t3));
-            vd.push(specularStrength);
             vd.push(specularShininess);
         }
         this.#vertexData = new Float32Array(vd)
