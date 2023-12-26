@@ -19,18 +19,15 @@ export function align(number, alignment) {
  * Creates a bind group from the given layout.
  * @param {GPUDevice} gpuDevice the GPU device
  * @param {GPUBindGroupLayout} layout the bind group layout
- * @param {*} entries the bind group entries; an array of objects with properties: buffer, offset, size
+ * @param {*} entries the bind group entries; an array of objects that will 
+ *                      be used for the 'resource' property
  * @returns the bind group
  */
 export function createBindGroupWithLayout(gpuDevice, layout, entries) {
     const completeEntries = entries.map((e, i) => {
         return {
             binding: i,
-            resource: {
-                buffer: e.buffer,
-                offset: e.offset,
-                size: e.size,
-            },
+            resource: e,
         };
     });
     return gpuDevice.createBindGroup({
@@ -44,7 +41,8 @@ export function createBindGroupWithLayout(gpuDevice, layout, entries) {
  * @param {GPUDevice} gpuDevice the GPU device
  * @param {GPURenderPipeline} pipeline the pipeline that contains the bind group layout
  * @param {number} groupNumber the bind group number
- * @param {*} entries the bind group entries; an array of objects with properties: buffer, offset, size
+ * @param {*} entries the bind group entries; an array of objects that will 
+ *                      be used for the 'resource' property
  * @returns the bind group
  */
 export function createBindGroup(gpuDevice, pipeline, groupNumber, entries) {
@@ -72,4 +70,26 @@ export function copyToBuffer(gpuDevice, buffer, data, offset = 0) {
         data.byteOffset,
         data.byteLength
     )
+}
+
+/**
+ * Creates a texture from the given bitmap.
+ * @param {GPUDevice} gpuDevice the GPU device
+ * @param {ImageBitmap} bitmap the bitmap
+ * @returns {GPUTexture} the texture
+ */
+export function createTextureFromBitmap(gpuDevice, bitmap) {
+    const texture = gpuDevice.createTexture({
+        size: [bitmap.width, bitmap.height, 1],
+        format: 'rgba8unorm',
+        usage: GPUTextureUsage.TEXTURE_BINDING |
+            GPUTextureUsage.RENDER_ATTACHMENT |
+            GPUTextureUsage.COPY_DST,
+    });
+    gpuDevice.queue.copyExternalImageToTexture(
+        { source: bitmap },
+        { texture: texture },
+        [bitmap.width, bitmap.height]
+    );
+    return texture;
 }

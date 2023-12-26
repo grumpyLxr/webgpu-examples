@@ -67,21 +67,21 @@ export class Renderer {
                 offset: 12,
                 format: 'float32x3'
             }, {
-                shaderLocation: 2, // color
+                shaderLocation: 2, // texture coordinates
                 offset: 24,
-                format: 'float32x3'
+                format: 'float32x2'
             },
             {
                 shaderLocation: 3, // specularStrength
-                offset: 36,
+                offset: 32,
                 format: 'float32'
             },
             {
                 shaderLocation: 4, // specularShininess
-                offset: 40,
+                offset: 36,
                 format: 'float32'
             }],
-            arrayStride: 44,
+            arrayStride: 40,
             stepMode: 'vertex'
         }];
 
@@ -120,17 +120,26 @@ export class Renderer {
             usage: GPUTextureUsage.RENDER_ATTACHMENT,
         });
 
+        // Create a sampler with linear filtering
+        const sampler = gpuDevice.createSampler({ magFilter: 'linear', minFilter: 'linear' });
+        // Load Images and create textures:
+        const colorBitmap = await this.#loadImage('color.png');
+        const colorTexture = utils.createTextureFromBitmap(gpuDevice, colorBitmap);
+
         // Create a uniform buffer for the VP (View-Projection) matrix
         // round to a multiple of 16 to match wgsl struct size (see https://www.w3.org/TR/WGSL/#alignment-and-size).
         const cameraBuffer = gpuDevice.createBuffer({
             size: utils.align(utils.mat4ByteLength + utils.vec3ByteLength, 16),
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
-        const cameraBindGroup = utils.createBindGroup(gpuDevice, renderPipeline, 0, [
+
+        const uniformBindGroup = utils.createBindGroup(gpuDevice, renderPipeline, 0, [
             { buffer: cameraBuffer },
+            sampler,
+            colorTexture.createView()
         ]);
         const cameraData = {
-            bindGroup: cameraBindGroup,
+            bindGroup: uniformBindGroup,
             setVpMatrix: function (m) { utils.copyToBuffer(gpuDevice, cameraBuffer, m); },
             setCameraPosition: function (p) { utils.copyToBuffer(gpuDevice, cameraBuffer, p, utils.mat4ByteLength); }
         }
@@ -274,5 +283,12 @@ export class Renderer {
         const response = await fetch(host + '/shaders.wgsl', { cache: "no-store" });
         const data = await response.text();
         return data;
+    }
+
+    async #loadImage(fileName) {
+        var host = window.location.protocol + "//" + window.location.host;
+        const response = await fetch(host + '/assets/' + fileName, { cache: "no-store" });
+        const bitmap = await createImageBitmap(await response.blob());
+        return bitmap;
     }
 }

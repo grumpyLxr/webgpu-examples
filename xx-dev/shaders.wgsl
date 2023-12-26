@@ -1,10 +1,13 @@
-struct Uniforms {
+struct Camera {
     // The View-Projection matrix
     vpMatrix: mat4x4f,
     // The position of the camera in world space
     cameraPosition: vec3f
 }
-@group(0) @binding(0) var<uniform> uni : Uniforms;
+@group(0) @binding(0) var<uniform> camera : Camera;
+
+@group(0) @binding(1) var texSampler: sampler;
+@group(0) @binding(2) var theTexture: texture_2d<f32>;
 
 struct ModelMatrices {
     modelMatrix: mat4x4f,
@@ -26,7 +29,7 @@ struct Light {
 struct VertexIn {
     @location(0) position: vec3f,
     @location(1) normal: vec3f,
-    @location(2) color: vec3f,
+    @location(2) texCoord: vec2f,
     @location(3) specularStrength: f32,
     @location(4) specularShininess: f32,
 }
@@ -35,7 +38,7 @@ struct VertexOut {
     @builtin(position) clipPosition: vec4f,
     @location(0) worldPosition: vec3f,
     @location(1) normal: vec3f,
-    @location(2) color: vec3f,
+    @location(2) texCoord: vec2f,
     @location(3) specularStrength: f32,
     @location(4) specularShininess: f32,
 }
@@ -45,7 +48,7 @@ fn vertex_main(in: VertexIn) -> VertexOut {
     var output: VertexOut;
 
     let vec4WorldPosition = matrices.modelMatrix * vec4(in.position, 1.0);
-    output.clipPosition = uni.vpMatrix * vec4WorldPosition;
+    output.clipPosition = camera.vpMatrix * vec4WorldPosition;
     output.worldPosition = vec3(vec4WorldPosition.xyz);
 
     // The normal vectors cannot be multiplied with the model matrix. If the model matrix 
@@ -53,7 +56,7 @@ fn vertex_main(in: VertexIn) -> VertexOut {
     // See http://www.lighthouse3d.com/tutorials/glsl-12-tutorial/the-normal-matrix/
     output.normal = matrices.normalMatrix * in.normal;
 
-    output.color = in.color;
+    output.texCoord = in.texCoord;
     output.specularStrength = in.specularStrength;
     output.specularShininess = in.specularShininess;
 
@@ -97,7 +100,7 @@ fn calcPointLight(
 
 @fragment
 fn fragment_main(in: VertexOut) -> @location(0) vec4f {
-    let viewDirection = normalize(uni.cameraPosition - in.worldPosition);
+    let viewDirection = normalize(camera.cameraPosition - in.worldPosition);
     let fragmentNormal = normalize(in.normal);
 
     var lightColor = vec3(0.0, 0.0, 0.0);
@@ -107,5 +110,6 @@ fn fragment_main(in: VertexOut) -> @location(0) vec4f {
         );
     }
 
-    return vec4(in.color * lightColor, 1.0);
+    let matColor = textureSample(theTexture, texSampler, in.texCoord);
+    return matColor * vec4(lightColor, 1.0);
 }

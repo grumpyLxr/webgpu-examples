@@ -1,39 +1,50 @@
 import {
+    vec2,
     vec3,
     mat4
 } from './imports/wgpu-matrix.module.js';
 
 const cubeVertices = [
-    vec3.fromValues(-1, -1, -1),
-    vec3.fromValues(1, -1, -1),
-    vec3.fromValues(1, 1, -1),
-    vec3.fromValues(-1, 1, -1),
-    vec3.fromValues(-1, -1, 1),
-    vec3.fromValues(-1, 1, 1),
-    vec3.fromValues(1, -1, 1),
-    vec3.fromValues(1, 1, 1),
+    vec3.fromValues(-1, -1, -1),  // 0
+    vec3.fromValues(1, -1, -1),   // 1
+    vec3.fromValues(1, 1, -1),    // 2
+    vec3.fromValues(-1, 1, -1),   // 3
+    vec3.fromValues(-1, -1, 1),   // 4
+    vec3.fromValues(-1, 1, 1),    // 5
+    vec3.fromValues(1, -1, 1),    // 6
+    vec3.fromValues(1, 1, 1),     // 7
 ];
 
 const cubeFaces = new Uint16Array([
     // front
-    2, 1, 0,
-    3, 2, 0,
-    // left
-    4, 3, 0,
-    3, 4, 5,
+    0, 3, 1,
+    1, 3, 2,
+    // left    
+    4, 5, 0,
+    0, 5, 3,
     // back
-    6, 5, 4,
-    5, 6, 7,
+    6, 7, 4,
+    4, 7, 5,
     // right
-    1, 7, 6,
-    1, 2, 7,
+    1, 2, 6,
+    6, 2, 7,
     // top
-    0, 1, 6,
-    0, 6, 4,
+    4, 0, 6, 
+    6, 0, 1,
     // bottom
-    2, 3, 5,
+    3, 5, 2,
     2, 5, 7,
-])
+]);
+
+// Texture coordinates for each face of the cube.
+const texCoords = [
+    vec2.fromValues(0, 0),
+    vec2.fromValues(0, 1),
+    vec2.fromValues(1, 0),
+    vec2.fromValues(1, 0),
+    vec2.fromValues(0, 1),
+    vec2.fromValues(1, 1),
+];
 
 export class CubeMesh {
 
@@ -72,7 +83,7 @@ export class CubeMesh {
     }
 
     getVertexCount() {
-        return this.#vertexData.length / 11;
+        return this.#vertexData.length / 10;
     }
 
     getTriangleCount() {
@@ -101,21 +112,25 @@ export class CubeMesh {
             const d2 = vec3.sub(v1, v3);
             const normal = vec3.normalize(vec3.cross(d1, d2));
 
+            const t1 = texCoords[i % 6 + 0];
+            const t2 = texCoords[i % 6 + 1];
+            const t3 = texCoords[i % 6 + 2];
+
             vd = vd.concat(Array.from(v1));
             vd = vd.concat(Array.from(normal));
-            vd = vd.concat(Array.from(color));
+            vd = vd.concat(Array.from(t1));
             vd.push(specularStrength);
             vd.push(specularShininess);
 
             vd = vd.concat(Array.from(v2));
             vd = vd.concat(Array.from(normal));
-            vd = vd.concat(Array.from(color));
+            vd = vd.concat(Array.from(t2));
             vd.push(specularStrength);
             vd.push(specularShininess);
 
             vd = vd.concat(Array.from(v3));
             vd = vd.concat(Array.from(normal));
-            vd = vd.concat(Array.from(color));
+            vd = vd.concat(Array.from(t3));
             vd.push(specularStrength);
             vd.push(specularShininess);
         }
