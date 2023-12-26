@@ -20,7 +20,7 @@ struct Light {
     diffuseStrength: f32,
     specularStrength: f32,
 }
-@group(2) @binding(0) var<uniform> light : Light;
+@group(2) @binding(0) var<storage, read> lights : array<Light>;
 
 // Vertex Shader: ------------------------------------------------------------
 struct VertexIn {
@@ -61,32 +61,51 @@ fn vertex_main(in: VertexIn) -> VertexOut {
 }
 
 // Fragment Shader: ------------------------------------------------------------
-@fragment
-fn fragment_main(in: VertexOut) -> @location(0) vec4f {
-    // Local illumination with Blinn-Phong lighting in world space:
-    let relativeLightPosition = light.position - in.worldPosition;
+
+// Calculates the color contribution of a point light to a fragment.
+// Local illumination with Blinn-Phong lighting in world space.
+fn calcPointLight(
+    light: Light,
+    fragmentPosition: vec3f,
+    fragmentNormal: vec3f,
+    viewDirection: vec3f,
+    matSpecularStrength: f32,
+    matSpecularShininess: f32
+) -> vec3f {
+    let relativeLightPosition = light.position - fragmentPosition;
     let lightDistance = length(relativeLightPosition);
 
     var resultLightColor: vec3f;
     if light.range < lightDistance {
-        resultLightColor = vec3(0.0, 0.0, 0.0);
+        return vec3(0.0, 0.0, 0.0);
     } else {
         let lightStrength = (light.range - lightDistance) / light.range; // linear falloff
         let lightDirection = normalize(relativeLightPosition);
-        let fragmentNormal = normalize(in.normal);
 
         let ambientColor = light.color * light.ambientStrength;
 
         let diffuseFactor = max(dot(lightDirection, fragmentNormal), 0.0);
         let diffuseColor = light.color * light.diffuseStrength * diffuseFactor;
 
-        let viewDirection = normalize(uni.cameraPosition - in.worldPosition);
         let halfwayDirection = normalize(lightDirection + viewDirection);
-        let specularFactor = pow(max(dot(fragmentNormal, halfwayDirection), 0.0), in.specularShininess);
-        let specularColor = light.color * in.specularStrength * light.specularStrength * specularFactor;
+        let specularFactor = pow(max(dot(fragmentNormal, halfwayDirection), 0.0), matSpecularShininess);
+        let specularColor = light.color * matSpecularStrength * light.specularStrength * specularFactor;
 
-        resultLightColor = (ambientColor + diffuseColor + specularColor) * lightStrength;
+        return (ambientColor + diffuseColor + specularColor) * lightStrength;
+    }
+}
+
+@fragment
+fn fragment_main(in: VertexOut) -> @location(0) vec4f {
+    let viewDirection = normalize(uni.cameraPosition - in.worldPosition);
+    let fragmentNormal = normalize(in.normal);
+
+    var lightColor = vec3(0.0, 0.0, 0.0);
+    for (var i:u32 = 0; i < arrayLength(&lights); i += 1) {
+        lightColor += calcPointLight(
+            lights[i], in.worldPosition, fragmentNormal, viewDirection, in.specularStrength, in.specularShininess
+        );
     }
 
-    return vec4(in.color * resultLightColor, 1.0);
+    return vec4(in.color * lightColor, 1.0);
 }

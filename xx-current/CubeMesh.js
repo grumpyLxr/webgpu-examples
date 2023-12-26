@@ -57,6 +57,11 @@ export class CubeMesh {
         this.#position = position;
     }
 
+    /**
+     * Rotates the cube around the given axis.
+     * @param {vec3} rotationAxis the axix around which the cube is rotated
+     * @param {number} rotationRad the angle by which to rotate in radiant
+     */
     setRotation(rotationAxis, rotationRad) {
         this.#rotationAxis = rotationAxis;
         this.#rotationRad = rotationRad;

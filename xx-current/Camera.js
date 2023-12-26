@@ -13,6 +13,10 @@ export class Camera {
     #direction; // the direction into which camera is looking; calculated from #yaw and #pitch
     #up; // the up vector of the camera
 
+    /**
+     * Creates a new camera.
+     * @param {vec3} initialPosition The starting position of the camera.
+     */
     constructor(initialPosition) {
         this.#initialPosition = vec3.copy(initialPosition);
         this.reset();
@@ -91,4 +95,4 @@ export class Camera {
         return viewProjectionMatrix;
     }
 
-}
+} 

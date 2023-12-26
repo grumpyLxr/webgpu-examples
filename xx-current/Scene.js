@@ -6,16 +6,11 @@ import { InputState } from './InputHandler.js';
 
 export class Scene {
     #camera = new Camera(vec3.create(0.0, 0.0, -5.0));
-    #cubes = []
-    #light = new Light(
-        vec3.create(0.0, -2.0, -3.0),
-        vec3.create(1.0, 1.0, 0.8),
-        8.0
-    );
+    #cubes = [];
+    #lights = [];
 
     constructor() {
         var c;
-
         c = new CubeMesh(vec3.create(1.0, 1.0, 1.0), 1.0, 32.0);
         this.#cubes.push(c);
 
@@ -26,6 +21,13 @@ export class Scene {
         c = new CubeMesh(vec3.create(0.0, 0.0, 1.0), 1.0, 2.0);
         c.moveTo(vec3.create(3.0, 0.0, 0.0));
         this.#cubes.push(c);
+
+        var l;
+        l = new Light(vec3.create(0, -2, -3), vec3.create(1.0, 1.0, 0.8), 8);
+        this.#lights.push(l);
+
+        l = new Light(vec3.create(0, -1, 3), vec3.create(0.4, 1.0, 0.4), 7);
+        this.#lights.push(l);
     }
 
     getCamera() {
@@ -40,8 +42,8 @@ export class Scene {
         return this.#cubes;
     }
 
-    getLight() {
-        return this.#light;
+    getLights() {
+        return this.#lights;
     }
 
     /**

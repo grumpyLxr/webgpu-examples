@@ -104,8 +104,7 @@ export class Renderer {
                 cullMode: 'back', // Backface culling
             },
             layout: 'auto',
-            // Enable depth testing so that the fragment closest to the camera
-            // is rendered in front.
+            // Enable depth testing so that the fragment closest to the camera is rendered in front.
             depthStencil: {
                 depthWriteEnabled: true,
                 depthCompare: 'less',
@@ -136,7 +135,7 @@ export class Renderer {
             setCameraPosition: function (p) { utils.copyToBuffer(gpuDevice, cameraBuffer, p, utils.mat4ByteLength); }
         }
 
-        // Create Uniform Buffer and BindGroups for the model matrics:
+        // Create uniform buffer and BindGroups for the model matrics:
         var modelMatrixStructByteLength = utils.mat4ByteLength + utils.mat3ByteLength;
         const modelMatricesBuffer = gpuDevice.createBuffer({
             size: utils.align(modelMatrixStructByteLength, 256) * meshList.length,
@@ -164,17 +163,20 @@ export class Renderer {
 
         // Create a uniform buffer for the Light
         // round to a multiple of 16 to match wgsl struct size (see https://www.w3.org/TR/WGSL/#alignment-and-size).
-        var lightBufferLength = utils.align(this.#scene.getLight().getLightData().byteLength, 16)
+        const lights = this.#scene.getLights()
+        const lightByteLengths = utils.align(lights[0].getLightData().byteLength, 16);
         const lightBuffer = gpuDevice.createBuffer({
-            size: lightBufferLength,
-            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+            size: lightByteLengths * lights.length,
+            usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
         });
         const lightBindGroup = utils.createBindGroup(gpuDevice, renderPipeline, 2, [
             { buffer: lightBuffer }
         ]);
         const lightData = {
             bindGroup: lightBindGroup,
-            setLight: function (l) { utils.copyToBuffer(gpuDevice, lightBuffer, l); },
+            setLight: function (i, light) {
+                utils.copyToBuffer(gpuDevice, lightBuffer, light, i * lightByteLengths);
+            },
         }
 
         this.#context = {
@@ -182,7 +184,7 @@ export class Renderer {
             depthTexture: depthTexture,
 
             camera: cameraData,
-            light: lightData,
+            lights: lightData,
 
             vertexBuffer: vertexBuffer,
             meshList: meshData,
@@ -203,9 +205,11 @@ export class Renderer {
         gpuCamera.setCameraPosition(cameraPosition);
 
         // Pass Light data to the shader:
-        const light = this.#scene.getLight();
-        const gpuLight = this.#context.light;
-        gpuLight.setLight(light.getLightData())
+        const lights = this.#scene.getLights();
+        const gpuLights = this.#context.lights;
+        for (let i = 0; i < lights.length; ++i) {
+            gpuLights.setLight(i, lights[i].getLightData())
+        }
 
         for (let m of this.#context.modelMatrices) {
             const modelMatrix = m.getModelMatrix();
@@ -243,7 +247,7 @@ export class Renderer {
         passEncoder.setPipeline(this.#context.pipeline);
         passEncoder.setVertexBuffer(0, this.#context.vertexBuffer);
         passEncoder.setBindGroup(gpuCamera.bindGroup.number, gpuCamera.bindGroup.group);
-        passEncoder.setBindGroup(gpuLight.bindGroup.number, gpuLight.bindGroup.group);
+        passEncoder.setBindGroup(gpuLights.bindGroup.number, gpuLights.bindGroup.group);
 
         for (let i = 0; i < this.#context.meshList.length; ++i) {
             const bindGroup = this.#context.modelMatrices[i].bindGroup;

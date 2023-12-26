@@ -53,7 +53,7 @@ async function main() {
             if (!document.hidden) {
                 renderer.renderFrame()
             }
-        }, 16);
+        }, 20);
         setInterval(() => {
             const inputState = inputHandler.getInputState();
             scene.updateScene(inputState)
