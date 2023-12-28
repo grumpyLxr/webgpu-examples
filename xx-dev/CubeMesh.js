@@ -1,6 +1,7 @@
 import {
     vec2,
     vec3,
+    mat3,
     mat4
 } from './imports/wgpu-matrix.module.js';
 
@@ -80,7 +81,7 @@ export class CubeMesh {
     }
 
     getVertexCount() {
-        return this.#vertexData.length / 9;
+        return this.#vertexData.length / 15;
     }
 
     getTriangleCount() {
@@ -114,29 +115,92 @@ export class CubeMesh {
             v2 = vec3.transformMat4(v2, scaleMatrix);
             v3 = vec3.transformMat4(v3, scaleMatrix);
 
-            const d1 = vec3.sub(v1, v2);
-            const d2 = vec3.sub(v1, v3);
-            const normal = vec3.normalize(vec3.cross(d1, d2));
+            const edge1 = vec3.sub(v1, v2);
+            const edge2 = vec3.sub(v1, v3);
+            const faceNormal = vec3.normalize(vec3.cross(edge1, edge2));
 
             const t1 = vec2.scale(texCoords[i % 6 + 0], scale);
             const t2 = vec2.scale(texCoords[i % 6 + 1], scale);
             const t3 = vec2.scale(texCoords[i % 6 + 2], scale);
 
+            // Calculate Tangent and Bitangent that are used for normal mapping.
+            // This works if the normal vector is the same for all vertices and 
+            // perpendicular to the face.
+            // If each vertex uses a different normal (e.g. normales of adjacent 
+            // faces are smoothed) we have to calculate tantent and bitangent
+            // vectors for each vertex. In addition to that if the normals
+            // are not perpendicular to the face we have to re-orthogonalize
+            // the tangent, bitangent and normal vectors. 
+            const tangentCoordinates = this.#calcTangentAndBitangent(
+                edge1, edge2, vec2.sub(t1, t2), vec2.sub(t1, t3)
+            );
+            // const tbnMatrix = mat3.create(
+            //     tangentCoordinates.t[0],
+            //     tangentCoordinates.t[1],
+            //     tangentCoordinates.t[2],
+            //     tangentCoordinates.b[0],
+            //     tangentCoordinates.b[1],
+            //     tangentCoordinates.b[2],
+            //     faceNormal[0],
+            //     faceNormal[1],
+            //     faceNormal[2],
+            // );
+            // var testNormal1 = vec3.create(0, 0, 1);
+            // testNormal1 = vec3.transformMat3(testNormal1, tbnMatrix);
+            // var testNormal2 = vec3.create(1, 0, 0);
+            // testNormal2 = vec3.transformMat3(testNormal2, tbnMatrix);
+            // var testNormal3 = vec3.create(0, 1, 0);
+            // testNormal3 = vec3.transformMat3(testNormal3, tbnMatrix);
+            // let calcBitangent = vec3.cross(tangentCoordinates.t, faceNormal);
+            // if (!vec3.equals(tangentCoordinates.b, calcBitangent)) {
+            //     throw Error("Bitangents are not equal");
+            // }
+
             vd = vd.concat(Array.from(v1));
-            vd = vd.concat(Array.from(normal));
+            vd = vd.concat(Array.from(faceNormal));
+            vd = vd.concat(Array.from(tangentCoordinates.t));
+            vd = vd.concat(Array.from(tangentCoordinates.b));
             vd = vd.concat(Array.from(t1));
             vd.push(specularShininess);
 
             vd = vd.concat(Array.from(v2));
-            vd = vd.concat(Array.from(normal));
+            vd = vd.concat(Array.from(faceNormal));
+            vd = vd.concat(Array.from(tangentCoordinates.t));
+            vd = vd.concat(Array.from(tangentCoordinates.b));
             vd = vd.concat(Array.from(t2));
             vd.push(specularShininess);
 
             vd = vd.concat(Array.from(v3));
-            vd = vd.concat(Array.from(normal));
+            vd = vd.concat(Array.from(faceNormal));
+            vd = vd.concat(Array.from(tangentCoordinates.t));
+            vd = vd.concat(Array.from(tangentCoordinates.b));
             vd = vd.concat(Array.from(t3));
             vd.push(specularShininess);
         }
         this.#vertexData = new Float32Array(vd)
+    }
+
+    /**
+     * Calculate Tangent and Bitangent that are used for normal mapping.
+     * 
+     * @param {vec3} edge1 vector between two vertices of a triangle
+     * @param {vec3} edge2 vector between two different vertices of a triangle
+     * @param {vec2} texEdge1 difference in the texture coordinates of the two vertices of edge1
+     * @param {vec2} texEdge2 difference in the texture coordinates of the two vertices of edge2
+     * @returns 
+     */
+    #calcTangentAndBitangent(edge1, edge2, texEdge1, texEdge2) {
+        let f = 1.0 / (texEdge1[0] * texEdge2[1] - texEdge2[0] * texEdge1[1]);
+        let tangent = vec3.create(
+            f * (texEdge2[1] * edge1[0] - texEdge1[1] * edge2[0]),
+            f * (texEdge2[1] * edge1[1] - texEdge1[1] * edge2[1]),
+            f * (texEdge2[1] * edge1[2] - texEdge1[1] * edge2[2]),
+        );
+        let bitangent = vec3.create(
+            f * (-texEdge2[0] * edge1[0] + texEdge1[0] * edge2[0]),
+            f * (-texEdge2[0] * edge1[1] + texEdge1[0] * edge2[1]),
+            f * (-texEdge2[0] * edge1[2] + texEdge1[0] * edge2[2]),
+        );
+        return { t: vec3.normalize(tangent), b: vec3.normalize(bitangent) }
     }
 }

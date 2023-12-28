@@ -22,11 +22,11 @@ export class Scene {
         c.moveTo(vec3.create(3.0, 0.0, 0.0));
         this.#cubes.push(c);
 
-        c = new CubeMesh(false, 64.0, 6);
+        c = new CubeMesh(false, 64.0, 5);
         this.#cubes.push(c);
 
         var l;
-        l = new Light(vec3.create(0, -2, -3), vec3.create(1.0, 1.0, 0.8), 8);
+        l = new Light(vec3.create(0, -2, -3), vec3.create(1.0, 1.0, 0.8), 10, 1, 0.4);
         this.#lights.push(l);
 
         l = new Light(vec3.create(0, -1, 3), vec3.create(0.4, 1.0, 0.4), 7);

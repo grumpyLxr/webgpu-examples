@@ -67,16 +67,23 @@ export class Renderer {
                 offset: 12,
                 format: 'float32x3'
             }, {
-                shaderLocation: 2, // texture coordinates
+                shaderLocation: 2, // texture tangent
                 offset: 24,
+                format: 'float32x3'
+            }, {
+                shaderLocation: 3, // texture bitangent
+                offset: 36,
+                format: 'float32x3'
+            }, {
+                shaderLocation: 4, // texture coordinates
+                offset: 48,
                 format: 'float32x2'
-            },
-            {
-                shaderLocation: 3, // specularShininess
-                offset: 32,
+            }, {
+                shaderLocation: 5, // specularShininess
+                offset: 56,
                 format: 'float32'
             }],
-            arrayStride: 36,
+            arrayStride: 60,
             stepMode: 'vertex'
         }];
 
@@ -116,7 +123,7 @@ export class Renderer {
         });
 
         // Create a sampler with linear filtering
-        const sampler = gpuDevice.createSampler({ 
+        const sampler = gpuDevice.createSampler({
             magFilter: 'linear',
             minFilter: 'linear',
             addressModeU: "repeat",
@@ -127,6 +134,9 @@ export class Renderer {
         const colorTexture = utils.createTextureFromBitmap(gpuDevice, colorBitmap);
         const specularBitmap = await this.#loadImage('checkboard-specular.png');
         const specularTexture = utils.createTextureFromBitmap(gpuDevice, specularBitmap, 'r');
+        const normalBitmap = await this.#loadImage('checkboard-normal.png');
+        const normalTexture = utils.createTextureFromBitmap(gpuDevice, normalBitmap);
+
 
         // Create a uniform buffer for the VP (View-Projection) matrix
         // round to a multiple of 16 to match wgsl struct size (see https://www.w3.org/TR/WGSL/#alignment-and-size).
@@ -139,7 +149,8 @@ export class Renderer {
             { buffer: cameraBuffer },
             sampler,
             colorTexture.createView(),
-            specularTexture.createView()
+            specularTexture.createView(),
+            normalTexture.createView(),
         ]);
         const cameraData = {
             bindGroup: uniformBindGroup,
