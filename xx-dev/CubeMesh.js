@@ -29,7 +29,7 @@ const cubeFaces = new Uint16Array([
     1, 2, 6,
     6, 2, 7,
     // top
-    4, 0, 6, 
+    4, 0, 6,
     6, 0, 1,
     // bottom
     3, 5, 2,
@@ -53,8 +53,8 @@ export class CubeMesh {
     #rotationRad = 0.0;
     #vertexData
 
-    constructor(specularShininess = 32.0) {
-        this.#calcVertexData(specularShininess)
+    constructor(isSolid = true, specularShininess = 32.0, scale = 1.0) {
+        this.#calcVertexData(isSolid, specularShininess, scale)
     }
 
     /**
@@ -98,20 +98,29 @@ export class CubeMesh {
         mat4.translate(modelMatrix, this.#position, modelMatrix);
         return modelMatrix;
     }
+    multiplay
+    #calcVertexData(isSolid, specularShininess, scale) {
+        const scaleMatrix = mat4.scale(
+            mat4.identity(), vec3.create(1 * scale, 1 * scale, (isSolid ? 1 : -1) * scale)
+        );
 
-    #calcVertexData(specularShininess) {
-        let vd = new Array()
+        let vd = new Array();
         for (var i = 0; i < cubeFaces.length; i += 3) {
-            const v1 = cubeVertices[cubeFaces[i + 0]];
-            const v2 = cubeVertices[cubeFaces[i + 1]];
-            const v3 = cubeVertices[cubeFaces[i + 2]];
+            var v1 = cubeVertices[cubeFaces[i + 0]];
+            var v2 = cubeVertices[cubeFaces[i + 1]];
+            var v3 = cubeVertices[cubeFaces[i + 2]];
+
+            v1 = vec3.transformMat4(v1, scaleMatrix);
+            v2 = vec3.transformMat4(v2, scaleMatrix);
+            v3 = vec3.transformMat4(v3, scaleMatrix);
+
             const d1 = vec3.sub(v1, v2);
             const d2 = vec3.sub(v1, v3);
             const normal = vec3.normalize(vec3.cross(d1, d2));
 
-            const t1 = texCoords[i % 6 + 0];
-            const t2 = texCoords[i % 6 + 1];
-            const t3 = texCoords[i % 6 + 2];
+            const t1 = vec2.scale(texCoords[i % 6 + 0], scale);
+            const t2 = vec2.scale(texCoords[i % 6 + 1], scale);
+            const t3 = vec2.scale(texCoords[i % 6 + 2], scale);
 
             vd = vd.concat(Array.from(v1));
             vd = vd.concat(Array.from(normal));
