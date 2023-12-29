@@ -1,7 +1,6 @@
 import {
     vec2,
     vec3,
-    mat3,
     mat4
 } from './imports/wgpu-matrix.module.js';
 
@@ -134,27 +133,6 @@ export class CubeMesh {
             const tangentCoordinates = this.#calcTangentAndBitangent(
                 edge1, edge2, vec2.sub(t1, t2), vec2.sub(t1, t3)
             );
-            // const tbnMatrix = mat3.create(
-            //     tangentCoordinates.t[0],
-            //     tangentCoordinates.t[1],
-            //     tangentCoordinates.t[2],
-            //     tangentCoordinates.b[0],
-            //     tangentCoordinates.b[1],
-            //     tangentCoordinates.b[2],
-            //     faceNormal[0],
-            //     faceNormal[1],
-            //     faceNormal[2],
-            // );
-            // var testNormal1 = vec3.create(0, 0, 1);
-            // testNormal1 = vec3.transformMat3(testNormal1, tbnMatrix);
-            // var testNormal2 = vec3.create(1, 0, 0);
-            // testNormal2 = vec3.transformMat3(testNormal2, tbnMatrix);
-            // var testNormal3 = vec3.create(0, 1, 0);
-            // testNormal3 = vec3.transformMat3(testNormal3, tbnMatrix);
-            // let calcBitangent = vec3.cross(tangentCoordinates.t, faceNormal);
-            // if (!vec3.equals(tangentCoordinates.b, calcBitangent)) {
-            //     throw Error("Bitangents are not equal");
-            // }
 
             vd = vd.concat(Array.from(v1));
             vd = vd.concat(Array.from(faceNormal));

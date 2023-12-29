@@ -141,7 +141,7 @@ export class Renderer {
         // Create a uniform buffer for the VP (View-Projection) matrix
         // round to a multiple of 16 to match wgsl struct size (see https://www.w3.org/TR/WGSL/#alignment-and-size).
         const cameraBuffer = gpuDevice.createBuffer({
-            size: utils.align(utils.mat4ByteLength + utils.vec3ByteLength, 16),
+            size: utils.align(utils.mat4ByteLength + utils.vec3ByteLength + 3 * utils.i32ByteLength, 16),
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -155,7 +155,25 @@ export class Renderer {
         const cameraData = {
             bindGroup: uniformBindGroup,
             setVpMatrix: function (m) { utils.copyToBuffer(gpuDevice, cameraBuffer, m); },
-            setCameraPosition: function (p) { utils.copyToBuffer(gpuDevice, cameraBuffer, p, utils.mat4ByteLength); }
+            setCameraPosition: function (p) { utils.copyToBuffer(gpuDevice, cameraBuffer, p, utils.mat4ByteLength); },
+            setUseColorTexture: function (v) {
+                const data = new Int32Array([v]);
+                utils.copyToBuffer(
+                    gpuDevice, cameraBuffer, data, utils.mat4ByteLength + utils.vec3ByteLength
+                );
+            },
+            setUseSpecularTexture: function (v) {
+                const data = new Int32Array([v]);
+                utils.copyToBuffer(
+                    gpuDevice, cameraBuffer, data, utils.mat4ByteLength + utils.vec3ByteLength + utils.i32ByteLength
+                );
+            },
+            setUseNormalTexture: function (v) {
+                const data = new Int32Array([v]);
+                utils.copyToBuffer(
+                    gpuDevice, cameraBuffer, data, utils.mat4ByteLength + utils.vec3ByteLength + 2 * utils.i32ByteLength
+                );
+            },
         }
 
         // Create uniform buffer and BindGroups for the model matrics:
@@ -226,6 +244,9 @@ export class Renderer {
         const gpuCamera = this.#context.camera;
         gpuCamera.setVpMatrix(vpMatrix);
         gpuCamera.setCameraPosition(cameraPosition);
+        gpuCamera.setUseColorTexture(camera.getRenderColorTexture());
+        gpuCamera.setUseSpecularTexture(camera.getRenderSpecularTexture());
+        gpuCamera.setUseNormalTexture(camera.getRenderNormalTexture());
 
         // Pass Light data to the shader:
         const lights = this.#scene.getLights();

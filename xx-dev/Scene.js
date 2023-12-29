@@ -64,8 +64,17 @@ export class Scene {
         if (inputState.resetCamera) {
             this.#camera.reset();
         }
+        if (inputState.colorTextureSwitch) {
+            this.#camera.setRenderColorTexture(!this.#camera.getRenderColorTexture());
+        }
+        if (inputState.specularTextureSwitch) {
+            this.#camera.setRenderSpecularTexture(!this.#camera.getRenderSpecularTexture());
+        }
+        if (inputState.normalTextureSwitch) {
+            this.#camera.setRenderNormalTexture(!this.#camera.getRenderNormalTexture());
+        }
 
         const rotation = Date.now() % 10000 / 10000 * (2 * Math.PI);
-        this.#cubes[0].setRotation(vec3.fromValues(1, 1, 0), rotation)
+        this.#cubes[0].setRotation(vec3.fromValues(1, 1, 0), rotation);
     }
 }

@@ -1,8 +1,9 @@
 import { vec3, mat3, mat4 } from './imports/wgpu-matrix.module.js';
 
-export const vec3ByteLength = vec3.create().byteLength
-export const mat3ByteLength = mat3.create().byteLength
-export const mat4ByteLength = mat4.create().byteLength
+export const vec3ByteLength = vec3.create().byteLength;
+export const mat3ByteLength = mat3.create().byteLength;
+export const mat4ByteLength = mat4.create().byteLength;
+export const i32ByteLength = 4;
 
 /**
  * Rounds the given number to a multiple of the alignment.

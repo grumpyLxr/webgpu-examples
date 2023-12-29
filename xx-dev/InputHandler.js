@@ -7,6 +7,9 @@ export class InputState {
         this.forward = false;
         this.backward = false;
         this.resetCamera = false;
+        this.colorTextureSwitch = false;
+        this.specularTextureSwitch = false;
+        this.normalTextureSwitch = false;
     }
 }
 
@@ -59,6 +62,18 @@ export class InputHandler {
                 break;
             case 'KeyR':
                 this.#state.resetCamera ||= value;
+                handled = true;
+                break;
+            case 'KeyC':
+                this.#state.colorTextureSwitch ||= value;
+                handled = true;
+                break;
+            case 'KeyV':
+                this.#state.specularTextureSwitch ||= value;
+                handled = true;
+                break;
+            case 'KeyB':
+                this.#state.normalTextureSwitch ||= value;
                 handled = true;
                 break;
         }

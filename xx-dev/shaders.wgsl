@@ -2,7 +2,11 @@ struct Camera {
     // The View-Projection matrix
     vpMatrix: mat4x4f,
     // The position of the camera in world space
-    cameraPosition: vec3f
+    cameraPosition: vec3f,
+    // Boolean values used to debug rendering
+    useColorTexture: i32,
+    useSpecularTexture: i32,
+    useNormalTexture: i32,
 }
 @group(0) @binding(0) var<uniform> camera : Camera;
 
@@ -109,14 +113,25 @@ fn fragment_main(in: VertexOut) -> @location(0) vec4f {
     let viewDirection = normalize(camera.cameraPosition - in.worldPosition);
 
     // we expect the specular strength to be in the red channel
-    let specularStrength = textureSample(specularTexture, texSampler, in.texCoord).r;
-    
-    // Load normal from normal map texture and transform coordinates from [0.0, 1.0] to [-1.0, 1.0]. 
-    // Normal Maps use the OpenGL coordinate system and to transfer them to the WebGPU/Vulkan 
-    // coordinate system y has to be inverted.
-    let normalMapColor = textureSample(normalTexture, texSampler, in.texCoord).rgb;
-    var normalMapNormal = normalize(normalMapColor * 2.0 - 1.0) * vec3(1.0, -1.0, 1.0);
-    normalMapNormal = mat3x3f(in.texTangent, in.texBitangent, in.normal) * normalMapNormal;
+    var specularStrength: f32;
+    if camera.useSpecularTexture != 0 {
+        specularStrength = textureSample(specularTexture, texSampler, in.texCoord).r;
+    } else {
+        specularStrength = 1.0;
+    }
+
+    let btnMatrix = mat3x3f(in.texTangent, in.texBitangent, in.normal);
+    var normalMapNormal: vec3f;
+    if camera.useNormalTexture != 0 {
+        // Load normal from normal map texture and transform coordinates from [0.0, 1.0] to [-1.0, 1.0]. 
+        // Normal Maps use the OpenGL coordinate system and to transfer them to the WebGPU/Vulkan 
+        // coordinate system y has to be inverted.
+        let normalMapColor = textureSample(normalTexture, texSampler, in.texCoord).rgb;
+        normalMapNormal = normalize(normalMapColor * 2.0 - 1.0) * vec3(1.0, -1.0, 1.0);
+        normalMapNormal = btnMatrix * normalMapNormal;
+    } else {
+        normalMapNormal = btnMatrix * vec3(0.0, 0.0, 1.0);
+    }
 
     var lightColor = vec3(0.0, 0.0, 0.0);
     for (var i: u32 = 0; i < arrayLength(&lights); i += 1) {
@@ -130,6 +145,12 @@ fn fragment_main(in: VertexOut) -> @location(0) vec4f {
         );
     }
 
-    let matColor = textureSample(colorTexture, texSampler, in.texCoord);
+    var matColor: vec4f;
+    if camera.useColorTexture != 0 {
+        matColor = textureSample(colorTexture, texSampler, in.texCoord);
+    } else {
+        matColor = vec4f(1.0, 1.0, 1.0, 1.0);
+    }
+    
     return matColor * vec4(lightColor, 1.0);
 }
