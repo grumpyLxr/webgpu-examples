@@ -73,7 +73,7 @@ fn vertex_main(in: VertexIn) -> VertexOut {
     return output;
 }
 
-// Fragment Shader: ------------------------------------------------------------
+// Standard Fragment Shader: -----------------------------------------------------
 
 // Calculates the color contribution of a point light to a fragment.
 // Local illumination with Blinn-Phong lighting in world space.

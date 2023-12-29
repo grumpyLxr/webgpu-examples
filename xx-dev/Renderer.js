@@ -30,10 +30,11 @@ export class Renderer {
         const gpuDevice = this.#gpuDevice;
 
         // Create a shader module from the shader source code
-        const shaders = await this.#loadShaders();
-        const shaderModule = this.#gpuDevice.createShaderModule({
-            code: shaders
-        });
+        const shaders = await this.#loadShaders('standard-shaders.wgsl');
+        const shaderModule = this.#gpuDevice.createShaderModule({ code: shaders });
+
+        const wireframeShaders = await this.#loadShaders('wireframe-shaders.wgsl');
+        const wireframeShaderModule = this.#gpuDevice.createShaderModule({ code: wireframeShaders });
 
         // Create vertex buffer to contain vertex data of the mesh
         const meshList = this.#scene.getMeshes()
@@ -55,40 +56,26 @@ export class Renderer {
             firstVertex += mesh.getVertexCount();
             vbOffset += meshVertices.byteLength;
         }
+        const vertexBufferLayout = [meshList[0].getVertexLayout()];
 
-        // Create a GPUVertexBufferLayout and GPURenderPipelineDescriptor to provide a definition of our render pipline
-        const vertexBufferLayout = [{
-            attributes: [{
-                shaderLocation: 0, // position
-                offset: 0,
-                format: 'float32x3'
-            }, {
-                shaderLocation: 1, // normal
-                offset: 12,
-                format: 'float32x3'
-            }, {
-                shaderLocation: 2, // texture tangent
-                offset: 24,
-                format: 'float32x3'
-            }, {
-                shaderLocation: 3, // texture bitangent
-                offset: 36,
-                format: 'float32x3'
-            }, {
-                shaderLocation: 4, // texture coordinates
-                offset: 48,
-                format: 'float32x2'
-            }, {
-                shaderLocation: 5, // specularShininess
-                offset: 56,
-                format: 'float32'
-            }],
-            arrayStride: 60,
-            stepMode: 'vertex'
-        }];
+        const totalNumVertices = meshList.map(m => m.getVertexCount()).reduce((a, b) => a + b, 0);
+        const wireframeIndexBuffer = this.#gpuDevice.createBuffer({
+            size: totalNumVertices * 2 * utils.u16ByteLength,
+            usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+        });
+        let wireframeIndexBufferContent = []
+        for (var i = 0; i < totalNumVertices; i += 3) {
+            wireframeIndexBufferContent.push(i);
+            wireframeIndexBufferContent.push(i + 1);
+            wireframeIndexBufferContent.push(i + 1);
+            wireframeIndexBufferContent.push(i + 2);
+            wireframeIndexBufferContent.push(i + 2);
+            wireframeIndexBufferContent.push(i);
+        }
+        utils.copyToBuffer(gpuDevice, wireframeIndexBuffer, new Uint16Array(wireframeIndexBufferContent));
 
-
-        const pipelineDescriptor = {
+        // Create the standard render pipeline that is used for normal rendering.
+        const standardPipelineDescriptor = {
             vertex: {
                 module: shaderModule,
                 entryPoint: 'vertex_main',
@@ -97,9 +84,7 @@ export class Renderer {
             fragment: {
                 module: shaderModule,
                 entryPoint: 'fragment_main',
-                targets: [{
-                    format: navigator.gpu.getPreferredCanvasFormat()
-                }]
+                targets: [{ format: navigator.gpu.getPreferredCanvasFormat() }]
             },
             primitive: {
                 topology: 'triangle-list',
@@ -113,8 +98,32 @@ export class Renderer {
                 format: 'depth24plus',
             },
         };
-        // Create the actual render pipeline
-        const renderPipeline = gpuDevice.createRenderPipeline(pipelineDescriptor);
+        const standardRenderPipeline = gpuDevice.createRenderPipeline(standardPipelineDescriptor);
+
+        // Create the render pipeline that is used draw lines such as wireframes and normals.
+        const wireframePipelineDescriptor = {
+            vertex: {
+                module: wireframeShaderModule,
+                entryPoint: 'vertex_main',
+                buffers: vertexBufferLayout
+            },
+            fragment: {
+                module: wireframeShaderModule,
+                entryPoint: 'fragment_main',
+                targets: [{ format: navigator.gpu.getPreferredCanvasFormat() }]
+            },
+            primitive: {
+                topology: 'line-list',
+            },
+            layout: 'auto',
+            // Enable depth testing so that the fragment closest to the camera is rendered in front.
+            depthStencil: {
+                depthWriteEnabled: false,
+                depthCompare: 'less-equal',
+                format: 'depth24plus',
+            },
+        };
+        const wireframeRenderPipeline = gpuDevice.createRenderPipeline(wireframePipelineDescriptor);
 
         const depthTexture = gpuDevice.createTexture({
             size: [this.#drawingContext.canvas.width, this.#drawingContext.canvas.height],
@@ -145,15 +154,19 @@ export class Renderer {
             usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
-        const uniformBindGroup = utils.createBindGroup(gpuDevice, renderPipeline, 0, [
+        const standardUniformBindGroup = utils.createBindGroup(gpuDevice, standardRenderPipeline, 0, [
             { buffer: cameraBuffer },
             sampler,
             colorTexture.createView(),
             specularTexture.createView(),
             normalTexture.createView(),
         ]);
+        const wireframeUniformBindGroup = utils.createBindGroup(gpuDevice, wireframeRenderPipeline, 0, [
+            { buffer: cameraBuffer }
+        ]);
         const cameraData = {
-            bindGroup: uniformBindGroup,
+            standardBindGroup: standardUniformBindGroup,
+            wireframeBindGroup: wireframeUniformBindGroup,
             setVpMatrix: function (m) { utils.copyToBuffer(gpuDevice, cameraBuffer, m); },
             setCameraPosition: function (p) { utils.copyToBuffer(gpuDevice, cameraBuffer, p, utils.mat4ByteLength); },
             setUseColorTexture: function (v) {
@@ -185,12 +198,15 @@ export class Renderer {
         const modelMatrices = []
         var bindGroupOffset = 0;
         for (let mesh of meshList) {
-            const bindGroup = utils.createBindGroup(gpuDevice, renderPipeline, 1, [{
+            const bindGroupEntries = [{
                 buffer: modelMatricesBuffer, offset: bindGroupOffset, size: modelMatrixStructByteLength
-            }]);
+            }]
+            const standardBindGroup = utils.createBindGroup(gpuDevice, standardRenderPipeline, 1, bindGroupEntries);
+            const wireframeBindGroup = utils.createBindGroup(gpuDevice, wireframeRenderPipeline, 1, bindGroupEntries);
             modelMatrices.push({
                 bufferOffset: bindGroupOffset,
-                bindGroup: bindGroup,
+                standardBindGroup: standardBindGroup,
+                wireframeBindGroup: wireframeBindGroup,
                 getModelMatrix: function () { return mesh.getModelMatrix(); },
                 setModelMatrix: function (m) {
                     utils.copyToBuffer(gpuDevice, modelMatricesBuffer, m, this.bufferOffset);
@@ -210,24 +226,27 @@ export class Renderer {
             size: lightByteLengths * lights.length,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
         });
-        const lightBindGroup = utils.createBindGroup(gpuDevice, renderPipeline, 2, [
+
+        const standardLightBindGroup = utils.createBindGroup(gpuDevice, standardRenderPipeline, 2, [
             { buffer: lightBuffer }
         ]);
         const lightData = {
-            bindGroup: lightBindGroup,
+            standardBindGroup: standardLightBindGroup,
             setLight: function (i, light) {
                 utils.copyToBuffer(gpuDevice, lightBuffer, light, i * lightByteLengths);
             },
         }
 
         this.#context = {
-            pipeline: renderPipeline,
+            standardPipeline: standardRenderPipeline,
+            wireframePipeline: wireframeRenderPipeline,
             depthTexture: depthTexture,
 
             camera: cameraData,
             lights: lightData,
 
             vertexBuffer: vertexBuffer,
+            wireframeIndexBuffer: wireframeIndexBuffer,
             meshList: meshData,
             modelMatrices: modelMatrices,
         }
@@ -237,11 +256,108 @@ export class Renderer {
      * Renders the next frame.
      */
     renderFrame() {
+        const gpuCamera = this.#context.camera;
+        const gpuLights = this.#context.lights;
+        this.#updateGpuData(gpuCamera, gpuLights);
+
+        // Create GPUCommandEncoder to issue commands to the GPU
+        // Note: render pass descriptor, command encoder, etc. are destroyed after use, fresh one needed for each frame.
+        const commandEncoder = this.#gpuDevice.createCommandEncoder();
+
+        this.#renderStandardPipeline(
+            commandEncoder,
+            gpuCamera.standardBindGroup,
+            this.#context.modelMatrices.map(m => m.standardBindGroup),
+            gpuLights.standardBindGroup
+        );
+
+        this.#renderWireframePipeline(
+            commandEncoder,
+            gpuCamera.wireframeBindGroup,
+            this.#context.modelMatrices.map(m => m.wireframeBindGroup),
+            gpuLights.wireframeBindGroup
+        );
+
+        // End frame by passing array of command buffers to command queue for execution
+        this.#gpuDevice.queue.submit([commandEncoder.finish()]);
+    }
+
+    #renderStandardPipeline(commandEncoder, cameraBindGroup, modelMatricesBindGroups, lightsBindGroup) {
+        // Create GPURenderPassDescriptor to tell WebGPU which texture to draw into, then initiate render pass
+        const renderPassDescriptor = {
+            colorAttachments: [{
+                clearValue: clearColor,
+                loadOp: 'clear',
+                storeOp: 'store',
+                view: this.#drawingContext.getCurrentTexture().createView()
+            }],
+            depthStencilAttachment: {
+                view: this.#context.depthTexture.createView(),
+                depthClearValue: 1.0,
+                depthLoadOp: 'clear',
+                depthStoreOp: 'store',
+            }
+        };
+
+        // Draw the meshes
+        const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
+        passEncoder.setPipeline(this.#context.standardPipeline);
+        passEncoder.setVertexBuffer(0, this.#context.vertexBuffer);
+        passEncoder.setBindGroup(cameraBindGroup.number, cameraBindGroup.group);
+        passEncoder.setBindGroup(lightsBindGroup.number, lightsBindGroup.group);
+
+        for (let i = 0; i < this.#context.meshList.length; ++i) {
+            const bindGroup = modelMatricesBindGroups[i];
+            passEncoder.setBindGroup(bindGroup.number, bindGroup.group);
+
+            const mesh = this.#context.meshList[i];
+            passEncoder.draw(mesh.vertexCount, 1, mesh.firstVertex);
+        }
+
+        // End the render pass
+        passEncoder.end();
+    }
+
+    #renderWireframePipeline(commandEncoder, cameraBindGroup, modelMatricesBindGroups, lightsBindGroup) {
+        const renderPassDescriptor = {
+            colorAttachments: [{
+                clearValue: [0, 0, 0, 1],
+                loadOp: 'load',
+                storeOp: 'store',
+                view: this.#drawingContext.getCurrentTexture().createView()
+            }],
+            depthStencilAttachment: {
+                view: this.#context.depthTexture.createView(),
+                depthClearValue: 1.0,
+                depthLoadOp: 'load',
+                depthStoreOp: 'discard',
+            }
+        };
+
+        // Draw the meshes
+        const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
+        passEncoder.setPipeline(this.#context.wireframePipeline);
+        passEncoder.setVertexBuffer(0, this.#context.vertexBuffer);
+        passEncoder.setIndexBuffer(this.#context.wireframeIndexBuffer, "uint16");
+        passEncoder.setBindGroup(cameraBindGroup.number, cameraBindGroup.group);
+
+        for (let i = 0; i < this.#context.meshList.length; ++i) {
+            const bindGroup = modelMatricesBindGroups[i];
+            passEncoder.setBindGroup(bindGroup.number, bindGroup.group);
+
+            const mesh = this.#context.meshList[i];
+            passEncoder.drawIndexed(mesh.vertexCount * 2, 1, mesh.firstVertex * 2);
+        }
+
+        // End the render pass
+        passEncoder.end();
+    }
+
+    #updateGpuData(gpuCamera, gpuLights) {
         // Pass MVP (Model/View/Projection) matrices to the shader:
         const camera = this.#scene.getCamera();
         const vpMatrix = camera.getViewProjectionMatrix(this.#drawingContext.canvas);
         const cameraPosition = camera.getPosition();
-        const gpuCamera = this.#context.camera;
         gpuCamera.setVpMatrix(vpMatrix);
         gpuCamera.setCameraPosition(cameraPosition);
         gpuCamera.setUseColorTexture(camera.getRenderColorTexture());
@@ -250,7 +366,6 @@ export class Renderer {
 
         // Pass Light data to the shader:
         const lights = this.#scene.getLights();
-        const gpuLights = this.#context.lights;
         for (let i = 0; i < lights.length; ++i) {
             gpuLights.setLight(i, lights[i].getLightData())
         }
@@ -264,58 +379,15 @@ export class Renderer {
             m.setModelMatrix(modelMatrix);
             m.setNormalMatrix(normalMatrix);
         }
-
-        // Create GPUCommandEncoder to issue commands to the GPU
-        // Note: render pass descriptor, command encoder, etc. are destroyed after use, fresh one needed for each frame.
-        const commandEncoder = this.#gpuDevice.createCommandEncoder();
-
-        // Create GPURenderPassDescriptor to tell WebGPU which texture to draw into, then initiate render pass
-        const renderPassDescriptor = {
-            colorAttachments: [{
-                clearValue: clearColor,
-                loadOp: 'clear',
-                storeOp: 'store',
-                view: this.#drawingContext.getCurrentTexture().createView()
-            }],
-            depthStencilAttachment: {
-                view: this.#context.depthTexture.createView(),
-
-                depthClearValue: 1.0,
-                depthLoadOp: 'clear',
-                depthStoreOp: 'store',
-            }
-        };
-
-        // Draw the meshes
-        const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
-        passEncoder.setPipeline(this.#context.pipeline);
-        passEncoder.setVertexBuffer(0, this.#context.vertexBuffer);
-        passEncoder.setBindGroup(gpuCamera.bindGroup.number, gpuCamera.bindGroup.group);
-        passEncoder.setBindGroup(gpuLights.bindGroup.number, gpuLights.bindGroup.group);
-
-        for (let i = 0; i < this.#context.meshList.length; ++i) {
-            const bindGroup = this.#context.modelMatrices[i].bindGroup;
-            passEncoder.setBindGroup(bindGroup.number, bindGroup.group);
-
-            const mesh = this.#context.meshList[i];
-            passEncoder.draw(mesh.vertexCount, 1, mesh.firstVertex);
-        }
-
-        // End the render pass
-        passEncoder.end();
-
-
-        // End frame by passing array of command buffers to command queue for execution
-        this.#gpuDevice.queue.submit([commandEncoder.finish()]);
     }
 
     /**
      * Loads vertex and fragment shaders.
      * @returns a String containing the shader definition
      */
-    async #loadShaders() {
+    async #loadShaders(fileName) {
         var host = window.location.protocol + "//" + window.location.host;
-        const response = await fetch(host + '/shaders.wgsl', { cache: "no-store" });
+        const response = await fetch(host + '/' + fileName, { cache: "no-store" });
         const data = await response.text();
         return data;
     }

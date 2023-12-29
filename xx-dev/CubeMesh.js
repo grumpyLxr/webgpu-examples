@@ -98,7 +98,39 @@ export class CubeMesh {
         mat4.translate(modelMatrix, this.#position, modelMatrix);
         return modelMatrix;
     }
-    multiplay
+
+    getVertexLayout() {
+        return {
+            attributes: [{
+                shaderLocation: 0, // position
+                offset: 0,
+                format: 'float32x3'
+            }, {
+                shaderLocation: 1, // normal
+                offset: 12,
+                format: 'float32x3'
+            }, {
+                shaderLocation: 2, // texture tangent
+                offset: 24,
+                format: 'float32x3'
+            }, {
+                shaderLocation: 3, // texture bitangent
+                offset: 36,
+                format: 'float32x3'
+            }, {
+                shaderLocation: 4, // texture coordinates
+                offset: 48,
+                format: 'float32x2'
+            }, {
+                shaderLocation: 5, // specularShininess
+                offset: 56,
+                format: 'float32'
+            }],
+            arrayStride: 60,
+            stepMode: 'vertex'
+        };
+    }
+
     #calcVertexData(isSolid, specularShininess, scale) {
         const scaleMatrix = mat4.scale(
             mat4.identity(), vec3.create(1 * scale, 1 * scale, (isSolid ? 1 : -1) * scale)
