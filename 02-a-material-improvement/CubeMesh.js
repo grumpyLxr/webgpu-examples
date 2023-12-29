@@ -98,7 +98,7 @@ export class CubeMesh {
         mat4.translate(modelMatrix, this.#position, modelMatrix);
         return modelMatrix;
     }
-    multiplay
+    
     #calcVertexData(isSolid, specularShininess, scale) {
         const scaleMatrix = mat4.scale(
             mat4.identity(), vec3.create(1 * scale, 1 * scale, (isSolid ? 1 : -1) * scale)
