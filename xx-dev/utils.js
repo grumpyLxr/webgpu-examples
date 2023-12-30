@@ -95,3 +95,30 @@ export function createTextureFromBitmap(gpuDevice, bitmap, bitmapFormat = 'rgba'
     );
     return texture;
 }
+
+/**
+ * Loads a file that contains vertex and fragment shader code.
+ * @param {string} fileName the filename
+ * @returns a String containing the shader definition
+ */
+export async function loadShaders(fileName) {
+    var host = window.location.protocol + "//" + window.location.host;
+    const response = await fetch(host + '/' + fileName, { cache: "no-store" });
+    const data = await response.text();
+    return data;
+}
+
+/**
+ * Loads an image for a file.
+ * 
+ * @param {string} fileName the filename of the image
+ * @returns {ImageBitmap} the bitmap of the image
+ */
+export async function loadImage(fileName) {
+    var host = window.location.protocol + "//" + window.location.host;
+    const response = await fetch(host + '/assets/' + fileName, { cache: "no-store" });
+    const bitmap = await createImageBitmap(
+        await response.blob(), { colorSpaceConversion: 'none' }
+    );
+    return bitmap;
+}

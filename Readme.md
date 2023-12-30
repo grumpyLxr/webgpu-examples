@@ -22,3 +22,14 @@ Examples that may be helpful when learning WebGPU. Each example extends the prev
 # XX - Dev
 
 * current development version
+
+# TODO
+
+* Rendering normals, tangent and bitangents
+* Selecting objects
+* Loading models
+* Mip-Maps
+* Antialiasing
+* Correct tangent space calculation with smoothed normals
+* Lighting with quadratic falloff
+* More light types: directional light, spot lights, volumetric light, area light, ...
