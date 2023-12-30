@@ -4,8 +4,9 @@ import {
 } from '../imports/wgpu-matrix.module.js';
 import * as utils from './utils.js';
 import { Scene } from './Scene.js';
-import { WireframeRenderPass } from './WireframeRenderPass.js';
 import { StandardRenderPass } from './StandardRenderPass.js';
+import { NormalsRenderPass } from './NormalsRenderPass.js';
+import { WireframeRenderPass } from './WireframeRenderPass.js';
 
 export class Renderer {
     #scene;
@@ -16,8 +17,9 @@ export class Renderer {
     #gpuLights;
     #gpuMeshData;
 
-    #wireframeRenderPass;
     #standardRenderPass;
+    #normalsRenderPass;
+    #wireframeRenderPass;
 
     /**
      * Creates a new Renderer to render the given scene.
@@ -29,8 +31,9 @@ export class Renderer {
         this.#scene = scene
         this.#gpuDevice = gpuDevice
         this.#drawingContext = drawingContext;
-        this.#wireframeRenderPass = new WireframeRenderPass();
         this.#standardRenderPass = new StandardRenderPass();
+        this.#normalsRenderPass = new NormalsRenderPass();
+        this.#wireframeRenderPass = new WireframeRenderPass();
     }
 
     /**
@@ -117,7 +120,7 @@ export class Renderer {
             },
         }
 
-        // Create uniform buffer and BindGroups for the model matrics:
+        // Create uniform buffer for the model matrics:
         var modelMatrixStructByteLength = utils.mat4ByteLength + utils.mat3ByteLength;
         var bindGroupByteLength = utils.align(modelMatrixStructByteLength, 256);
         const modelMatricesBuffer = gpuDevice.createBuffer({
@@ -157,6 +160,7 @@ export class Renderer {
         }
 
         await this.#standardRenderPass.init(gpuDevice, depthTexture, this.#gpuCamera, this.#gpuLights, this.#gpuMeshData);
+        await this.#normalsRenderPass.init(gpuDevice, depthTexture, this.#gpuCamera, this.#gpuMeshData);
         await this.#wireframeRenderPass.init(gpuDevice, depthTexture, this.#gpuCamera, this.#gpuMeshData);
     }
 
@@ -171,7 +175,11 @@ export class Renderer {
         const commandEncoder = this.#gpuDevice.createCommandEncoder();
 
         this.#standardRenderPass.renderFrame(this.#drawingContext, commandEncoder);
+
+        // First render wireframes and then normals. This way the normals are rendered above
+        // the wireframe and are visible at all times.
         this.#wireframeRenderPass.renderFrame(this.#drawingContext, commandEncoder);
+        this.#normalsRenderPass.renderFrame(this.#drawingContext, commandEncoder);
 
         // End frame by passing array of command buffers to command queue for execution
         this.#gpuDevice.queue.submit([commandEncoder.finish()]);

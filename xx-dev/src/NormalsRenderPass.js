@@ -1,13 +1,13 @@
 import * as utils from './utils.js';
 
 /**
- * Render pass that renders wireframes.
+ * Render pass that renders normals, tangents and bitangent.
  */
-export class WireframeRenderPass {
+export class NormalsRenderPass {
     #renderPipeline;
     #depthTexture;
     #uniformsBindGroup;
-    #wireframeIndexBuffer;
+    #vertexTypeVertexBuffer;
     #meshData;
     #modelMatrixBindGroups;
 
@@ -15,14 +15,21 @@ export class WireframeRenderPass {
         this.#depthTexture = depthTexture;
         this.#meshData = meshData;
 
-        const shaderFile = await utils.loadShaders('wireframe-shaders.wgsl');
+        const shaderFile = await utils.loadShaders('normal-shaders.wgsl');
         const shaderModule = gpuDevice.createShaderModule({ code: shaderFile });
+
+        // Create a vertex buffer that contains the vertex types that should be drawn.
+        const typeBufferStruct = this.#createVertexTypeBuffer(gpuDevice);
+        this.#vertexTypeVertexBuffer = typeBufferStruct.buffer;
+        const vertexBufferLayout = structuredClone(meshData.vertexBufferLayout);
+        vertexBufferLayout[0].stepMode = "instance";
+        vertexBufferLayout.push(typeBufferStruct.layout);
 
         this.#renderPipeline = gpuDevice.createRenderPipeline({
             vertex: {
                 module: shaderModule,
                 entryPoint: 'vertex_main',
-                buffers: meshData.vertexBufferLayout
+                buffers: vertexBufferLayout
             },
             fragment: {
                 module: shaderModule,
@@ -53,27 +60,26 @@ export class WireframeRenderPass {
             }]);
             this.#modelMatrixBindGroups.push(bg);
         }
-
-        this.#wireframeIndexBuffer = this.#createIndexBuffer(gpuDevice, meshData.meshList);
     }
 
-    #createIndexBuffer(gpuDevice, meshList) {
-        const totalNumVertices = meshList.map(m => m.vertexCount).reduce((a, b) => a + b, 0);
+    #createVertexTypeBuffer(gpuDevice) {
         const buffer = gpuDevice.createBuffer({
-            size: totalNumVertices * 2 * utils.u16ByteLength,
-            usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+            size: 2 * utils.i32ByteLength,
+            usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
         });
-        let content = []
-        for (var i = 0; i < totalNumVertices; i += 3) {
-            content.push(i);
-            content.push(i + 1);
-            content.push(i + 1);
-            content.push(i + 2);
-            content.push(i + 2);
-            content.push(i);
-        }
-        utils.copyToBuffer(gpuDevice, buffer, new Uint16Array(content));
-        return buffer;
+        let content = [0, 1]
+        utils.copyToBuffer(gpuDevice, buffer, new Int32Array(content));
+
+        const layout = {
+            attributes: [{
+                shaderLocation: 15, // vertex type
+                offset: 0,
+                format: 'sint32'
+            }],
+            arrayStride: 4,
+            stepMode: 'vertex'
+        };
+        return { buffer: buffer, layout: layout };
     }
 
     /**
@@ -93,27 +99,26 @@ export class WireframeRenderPass {
             depthStencilAttachment: {
                 view: this.#depthTexture.createView(),
                 depthClearValue: 1.0,
-                depthLoadOp: 'load',
+                depthLoadOp: 'clear',
                 depthStoreOp: 'discard',
             }
         });
 
         passEncoder.setPipeline(this.#renderPipeline);
         passEncoder.setVertexBuffer(0, this.#meshData.vertexBuffer);
-        passEncoder.setIndexBuffer(this.#wireframeIndexBuffer, "uint16");
+        passEncoder.setVertexBuffer(1, this.#vertexTypeVertexBuffer);
         passEncoder.setBindGroup(this.#uniformsBindGroup.number, this.#uniformsBindGroup.group);
 
-        // Draw the meshes
+        // Draw the normals of the meshes.
         const meshList = this.#meshData.meshList;
         for (let i = 0; i < meshList.length; ++i) {
             const bindGroup = this.#modelMatrixBindGroups[i];
             passEncoder.setBindGroup(bindGroup.number, bindGroup.group);
 
             const mesh = meshList[i];
-            passEncoder.drawIndexed(mesh.vertexCount * 2, 1, mesh.firstVertex * 2);
+            passEncoder.draw(2, mesh.vertexCount, 0, mesh.firstVertex);
         }
 
-        // End the render pass
         passEncoder.end();
     }
 }
