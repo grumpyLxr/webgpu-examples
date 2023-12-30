@@ -2,7 +2,7 @@ import {
     vec2,
     vec3,
     mat4
-} from './imports/wgpu-matrix.module.js';
+} from '../imports/wgpu-matrix.module.js';
 
 const cubeVertices = [
     vec3.fromValues(-1, -1, -1),  // 0

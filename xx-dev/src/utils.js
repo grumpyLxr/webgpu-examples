@@ -1,4 +1,4 @@
-import { vec3, mat3, mat4 } from './imports/wgpu-matrix.module.js';
+import { vec3, mat3, mat4 } from '../imports/wgpu-matrix.module.js';
 
 export const vec3ByteLength = vec3.create().byteLength;
 export const mat3ByteLength = mat3.create().byteLength;
@@ -103,7 +103,7 @@ export function createTextureFromBitmap(gpuDevice, bitmap, bitmapFormat = 'rgba'
  */
 export async function loadShaders(fileName) {
     var host = window.location.protocol + "//" + window.location.host;
-    const response = await fetch(host + '/' + fileName, { cache: "no-store" });
+    const response = await fetch(host + '/src/' + fileName, { cache: "no-store" });
     const data = await response.text();
     return data;
 }

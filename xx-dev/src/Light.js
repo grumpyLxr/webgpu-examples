@@ -1,6 +1,6 @@
 import {
     vec3,
-} from './imports/wgpu-matrix.module.js';
+} from '../imports/wgpu-matrix.module.js';
 
 export class Light {
     #position;

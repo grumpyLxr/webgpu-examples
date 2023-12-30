@@ -1,4 +1,4 @@
-import { vec3 } from './imports/wgpu-matrix.module.js';
+import { vec3 } from '../imports/wgpu-matrix.module.js';
 import { Camera } from './Camera.js';
 import { CubeMesh } from './CubeMesh.js';
 import { Light } from './Light.js';

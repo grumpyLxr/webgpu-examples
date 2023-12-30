@@ -1,7 +1,7 @@
 import {
     mat3,
     mat4,
-} from './imports/wgpu-matrix.module.js';
+} from '../imports/wgpu-matrix.module.js';
 import * as utils from './utils.js';
 import { Scene } from './Scene.js';
 import { WireframeRenderPass } from './WireframeRenderPass.js';

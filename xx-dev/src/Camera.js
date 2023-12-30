@@ -1,7 +1,7 @@
 import {
     vec3,
     mat4,
-} from './imports/wgpu-matrix.module.js';
+} from '../imports/wgpu-matrix.module.js';
 
 const initialDirection = vec3.fromValues(0, 0, 1);
 const pitchMax = (Math.PI / 2) * 0.95;
