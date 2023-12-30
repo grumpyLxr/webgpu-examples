@@ -7,6 +7,35 @@ export class StandardRenderPass {
     #meshData;
     #modelMatrixBindGroups;
     #lightsBindGroup;
+    #gpuRenderOptions;
+
+    #renderColorTexture = true;
+    #renderSpecularTexture = true;
+    #renderNormalTexture = true;
+
+    getRenderColorTexture() {
+        return this.#renderColorTexture;
+    }
+
+    setRenderColorTexture(value) {
+        this.#renderColorTexture = value;
+    }
+
+    getRenderSpecularTexture() {
+        return this.#renderSpecularTexture;
+    }
+
+    setRenderSpecularTexture(value) {
+        this.#renderSpecularTexture = value;
+    }
+
+    getRenderNormalTexture() {
+        return this.#renderNormalTexture;
+    }
+
+    setRenderNormalTexture(value) {
+        this.#renderNormalTexture = value;
+    }
 
     async init(gpuDevice, depthTexture, camera, lights, meshData) {
         this.#depthTexture = depthTexture;
@@ -56,15 +85,36 @@ export class StandardRenderPass {
         const normalBitmap = await utils.loadImage('checkboard-normal.png');
         const normalTexture = utils.createTextureFromBitmap(gpuDevice, normalBitmap);
 
+        // Create a uniform buffer for the VP (View-Projection) matrix
+        // round to a multiple of 16 to match wgsl struct size (see https://www.w3.org/TR/WGSL/#alignment-and-size).
+        const renderOptionsBuffer = gpuDevice.createBuffer({
+            size: utils.align(3 * utils.i32ByteLength, 16),
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+        this.#gpuRenderOptions = {
+            buffer: renderOptionsBuffer,
+            setUseColorTexture: function (v) {
+                utils.copyToBuffer(gpuDevice, this.buffer, new Int32Array([v]), 0);
+            },
+            setUseSpecularTexture: function (v) {
+                utils.copyToBuffer(gpuDevice, this.buffer, new Int32Array([v]), utils.i32ByteLength);
+            },
+            setUseNormalTexture: function (v) {
+                utils.copyToBuffer(gpuDevice, this.buffer, new Int32Array([v]), 2 * utils.i32ByteLength);
+            },
+        }
+
+        // Create BindGroup for uniforms.
         this.#uniformsBindGroup = utils.createBindGroup(gpuDevice, this.#renderPipeline, 0, [
             { buffer: camera.buffer },
             sampler,
             colorTexture.createView(),
             specularTexture.createView(),
             normalTexture.createView(),
+            { buffer: renderOptionsBuffer },
         ]);
 
-        // Create BindGroups for the model matrics:
+        // Create BindGroups for the model matrics.
         this.#modelMatrixBindGroups = []
         for (let mMatrix of meshData.modelMatrices) {
             const bg = utils.createBindGroup(gpuDevice, this.#renderPipeline, 1, [{
@@ -73,6 +123,7 @@ export class StandardRenderPass {
             this.#modelMatrixBindGroups.push(bg);
         }
 
+        // Create a BindGroup for the lights.
         this.#lightsBindGroup = utils.createBindGroup(gpuDevice, this.#renderPipeline, 2, [
             { buffer: lights.buffer }
         ]);
@@ -82,6 +133,10 @@ export class StandardRenderPass {
      * Renders the next frame.
      */
     renderFrame(drawingContext, commandEncoder) {
+        this.#gpuRenderOptions.setUseColorTexture(this.#renderColorTexture);
+        this.#gpuRenderOptions.setUseSpecularTexture(this.#renderSpecularTexture);
+        this.#gpuRenderOptions.setUseNormalTexture(this.#renderNormalTexture);
+
         const passEncoder = commandEncoder.beginRenderPass({
             colorAttachments: [{
                 clearValue: { r: 0.0, g: 0.5, b: 1.0, a: 1.0 },

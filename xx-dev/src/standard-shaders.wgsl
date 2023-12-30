@@ -3,10 +3,6 @@ struct Camera {
     vpMatrix: mat4x4f,
     // The position of the camera in world space
     cameraPosition: vec3f,
-    // Boolean values used to debug rendering
-    useColorTexture: i32,
-    useSpecularTexture: i32,
-    useNormalTexture: i32,
 }
 @group(0) @binding(0) var<uniform> camera : Camera;
 
@@ -14,6 +10,14 @@ struct Camera {
 @group(0) @binding(2) var colorTexture: texture_2d<f32>;
 @group(0) @binding(3) var specularTexture: texture_2d<f32>;
 @group(0) @binding(4) var normalTexture: texture_2d<f32>;
+
+struct RenderOptions {
+    // Boolean values used to debug rendering
+    useColorTexture: i32,
+    useSpecularTexture: i32,
+    useNormalTexture: i32,
+}
+@group(0) @binding(5) var<uniform> renderOptions : RenderOptions;
 
 struct ModelMatrices {
     modelMatrix: mat4x4f,
@@ -114,7 +118,7 @@ fn fragment_main(in: VertexOut) -> @location(0) vec4f {
 
     // we expect the specular strength to be in the red channel
     var specularStrength: f32;
-    if camera.useSpecularTexture != 0 {
+    if renderOptions.useSpecularTexture != 0 {
         specularStrength = textureSample(specularTexture, texSampler, in.texCoord).r;
     } else {
         specularStrength = 1.0;
@@ -122,7 +126,7 @@ fn fragment_main(in: VertexOut) -> @location(0) vec4f {
 
     let btnMatrix = mat3x3f(in.texTangent, in.texBitangent, in.normal);
     var normalMapNormal: vec3f;
-    if camera.useNormalTexture != 0 {
+    if renderOptions.useNormalTexture != 0 {
         // Load normal from normal map texture and transform coordinates from [0.0, 1.0] to [-1.0, 1.0]. 
         // Normal Maps use the OpenGL coordinate system and to transfer them to the WebGPU/Vulkan 
         // coordinate system y has to be inverted.
@@ -146,11 +150,11 @@ fn fragment_main(in: VertexOut) -> @location(0) vec4f {
     }
 
     var matColor: vec4f;
-    if camera.useColorTexture != 0 {
+    if renderOptions.useColorTexture != 0 {
         matColor = textureSample(colorTexture, texSampler, in.texCoord);
     } else {
         matColor = vec4f(1.0, 1.0, 1.0, 1.0);
     }
-    
+
     return matColor * vec4(lightColor, 1.0);
 }

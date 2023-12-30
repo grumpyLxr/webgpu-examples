@@ -56,7 +56,8 @@ async function main() {
         }, 20);
         setInterval(() => {
             const inputState = inputHandler.getInputState();
-            scene.updateScene(inputState)
+            scene.updateScene(inputState);
+            renderer.updateWithInputState(inputState);
         }, 10);
     } catch (e) {
         displayErrorMessage(e)

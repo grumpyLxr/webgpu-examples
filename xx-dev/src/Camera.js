@@ -14,10 +14,6 @@ export class Camera {
     #direction; // the direction into which camera is looking; calculated from #yaw and #pitch
     #up; // the up vector of the camera
 
-    #renderColorTexture = true;
-    #renderSpecularTexture = true;
-    #renderNormalTexture = true;
-
     /**
      * Creates a new camera.
      * @param {vec3} initialPosition The starting position of the camera.
@@ -102,29 +98,4 @@ export class Camera {
         mat4.multiply(projectionMatrix, viewMatrix, viewProjectionMatrix);
         return viewProjectionMatrix;
     }
-
-    getRenderColorTexture() {
-        return this.#renderColorTexture;
-    }
-
-    setRenderColorTexture(value) {
-        this.#renderColorTexture = value;
-    }
-
-    getRenderSpecularTexture() {
-        return this.#renderSpecularTexture;
-    }
-
-    setRenderSpecularTexture(value) {
-        this.#renderSpecularTexture = value;
-    }
-
-    getRenderNormalTexture() {
-        return this.#renderNormalTexture;
-    }
-
-    setRenderNormalTexture(value) {
-        this.#renderNormalTexture = value;
-    }
-
 } 

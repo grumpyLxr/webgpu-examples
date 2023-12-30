@@ -33,6 +33,18 @@ export class Renderer {
         this.#standardRenderPass = new StandardRenderPass();
     }
 
+    updateWithInputState(inputState) {
+        if (inputState.colorTextureSwitch) {
+            this.#standardRenderPass.setRenderColorTexture(!this.#standardRenderPass.getRenderColorTexture());
+        }
+        if (inputState.specularTextureSwitch) {
+            this.#standardRenderPass.setRenderSpecularTexture(!this.#standardRenderPass.getRenderSpecularTexture());
+        }
+        if (inputState.normalTextureSwitch) {
+            this.#standardRenderPass.setRenderNormalTexture(!this.#standardRenderPass.getRenderNormalTexture());
+        }
+    }
+
     async init() {
         const gpuDevice = this.#gpuDevice;
 
@@ -166,9 +178,6 @@ export class Renderer {
         const vpMatrix = camera.getViewProjectionMatrix(this.#drawingContext.canvas);
         gpuCamera.setVpMatrix(vpMatrix);
         gpuCamera.setCameraPosition(camera.getPosition());
-        gpuCamera.setUseColorTexture(camera.getRenderColorTexture());
-        gpuCamera.setUseSpecularTexture(camera.getRenderSpecularTexture());
-        gpuCamera.setUseNormalTexture(camera.getRenderNormalTexture());
 
         // Pass Light data to the shader:
         const lights = this.#scene.getLights();
