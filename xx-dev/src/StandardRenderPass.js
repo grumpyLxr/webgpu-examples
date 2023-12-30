@@ -1,5 +1,8 @@
 import * as utils from './utils.js';
 
+/**
+ * The standard render pass the renders the scene with lights, textures, etc.
+ */
 export class StandardRenderPass {
     #renderPipeline;
     #depthTexture;
@@ -131,6 +134,9 @@ export class StandardRenderPass {
 
     /**
      * Renders the next frame.
+     * 
+     * @param {GPUCanvasContext} drawingContext the canvas on which the frame is drawn
+     * @param {GPUCommandEncoder} commandEncoder the command encoder to send commands to the GPU
      */
     renderFrame(drawingContext, commandEncoder) {
         this.#gpuRenderOptions.setUseColorTexture(this.#renderColorTexture);

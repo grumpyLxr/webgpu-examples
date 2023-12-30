@@ -33,6 +33,11 @@ export class Renderer {
         this.#standardRenderPass = new StandardRenderPass();
     }
 
+    /**
+     * Updates the renderer with the user's input.
+     * 
+     * @param {InputState} inputState the user input between the last update and this update
+     */
     updateWithInputState(inputState) {
         if (inputState.colorTextureSwitch) {
             this.#standardRenderPass.setRenderColorTexture(!this.#standardRenderPass.getRenderColorTexture());

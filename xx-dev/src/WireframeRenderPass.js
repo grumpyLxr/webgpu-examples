@@ -1,5 +1,8 @@
 import * as utils from './utils.js';
 
+/**
+ * Render pass that renders wireframes and normals.
+ */
 export class WireframeRenderPass {
     #renderPipeline;
     #depthTexture;
@@ -75,6 +78,9 @@ export class WireframeRenderPass {
 
     /**
      * Renders the next frame.
+     * 
+     * @param {GPUCanvasContext} drawingContext the canvas on which the frame is drawn
+     * @param {GPUCommandEncoder} commandEncoder the command encoder to send commands to the GPU
      */
     renderFrame(drawingContext, commandEncoder) {
         const passEncoder = commandEncoder.beginRenderPass({
