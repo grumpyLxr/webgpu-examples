@@ -1,10 +1,10 @@
 import * as utils from './utils.js';
 
-const LineType = {
+const LineType = Object.freeze({
     Normal: 1,
     Tangent: 2,
     Bitangent: 3,
-}
+});
 
 /**
  * Render pass that renders normals, tangents and bitangent.

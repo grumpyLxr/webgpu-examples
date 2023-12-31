@@ -9,10 +9,10 @@ import { NormalsRenderPass } from './NormalsRenderPass.js';
 import { WireframeRenderPass } from './WireframeRenderPass.js';
 import { SelectRenderPass } from './SelectRenderPass.js';
 
-const SelectionMode = {
+const SelectionMode = Object.freeze({
     Face: 'Face',
     Object: 'Object'
-}
+});
 
 export class Renderer {
     #scene;
@@ -95,19 +95,19 @@ export class Renderer {
     setColorTextureRenderMode(mode) {
         this.#standardRenderPass.setColorTextureMode(mode);
         document.getElementById("tex-color-mode").textContent =
-            this.#standardRenderPass.getColorTextureMode();
+            this.#standardRenderPass.getColorTextureMode().name;
     }
 
     setSpecularTextureRenderMode(mode) {
         this.#standardRenderPass.setSpecularTextureMode(mode);
         document.getElementById("tex-specular-mode").textContent =
-            this.#standardRenderPass.getSpecularTextureMode();
+            this.#standardRenderPass.getSpecularTextureMode().name;
     }
 
     setNormalsTextureRenderMode(mode) {
         this.#standardRenderPass.setNormalTextureMode(mode);
         document.getElementById("tex-normal-mode").textContent =
-            this.#standardRenderPass.getNormalTextureMode();
+            this.#standardRenderPass.getNormalTextureMode().name;
     }
 
     #nextTextureRenderMode(m) {

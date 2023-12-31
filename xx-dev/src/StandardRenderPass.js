@@ -1,10 +1,10 @@
 import * as utils from './utils.js';
 
-export const TextureRenderMode = {
-    Normal: 0,
-    Disabled: 1,
-    Exclusive: 3,
-}
+export const TextureRenderMode = Object.freeze({
+    Normal: { name: 'Normal', value: 0 },
+    Disabled: { name: 'Disabled', value: 1 },
+    Exclusive: { name: 'Exclusive', value: 2 },
+});
 
 /**
  * The standard render pass the renders the scene with lights, textures, etc.
@@ -102,13 +102,13 @@ export class StandardRenderPass {
         });
         this.#gpuRenderOptions = {
             buffer: renderOptionsBuffer,
-            setUseColorTexture: function (v) {
+            setColorTextureMode: function (v) {
                 utils.copyToBuffer(gpuDevice, this.buffer, new Int32Array([v]), 0);
             },
-            setUseSpecularTexture: function (v) {
+            setSpecularTextureMode: function (v) {
                 utils.copyToBuffer(gpuDevice, this.buffer, new Int32Array([v]), utils.i32ByteLength);
             },
-            setUseNormalTexture: function (v) {
+            setNormalTextureMode: function (v) {
                 utils.copyToBuffer(gpuDevice, this.buffer, new Int32Array([v]), 2 * utils.i32ByteLength);
             },
         }
@@ -145,9 +145,9 @@ export class StandardRenderPass {
      * @param {GPUCommandEncoder} commandEncoder the command encoder to send commands to the GPU
      */
     renderFrame(drawingContext, commandEncoder) {
-        this.#gpuRenderOptions.setUseColorTexture(this.#colorTextureMode);
-        this.#gpuRenderOptions.setUseSpecularTexture(this.#specularTextureMode);
-        this.#gpuRenderOptions.setUseNormalTexture(this.#normalTextureMode);
+        this.#gpuRenderOptions.setColorTextureMode(this.#colorTextureMode.value);
+        this.#gpuRenderOptions.setSpecularTextureMode(this.#specularTextureMode.value);
+        this.#gpuRenderOptions.setNormalTextureMode(this.#normalTextureMode.value);
 
         const passEncoder = commandEncoder.beginRenderPass({
             colorAttachments: [{

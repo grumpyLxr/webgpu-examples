@@ -81,7 +81,7 @@ fn vertex_main(in: VertexIn) -> VertexOut {
 
 override TEXTURE_MODE_NORMAL = 0;
 override TEXTURE_MODE_DISABLED = 1;
-override TEXTURE_MODE_EXCLUSICE = 3;
+override TEXTURE_MODE_EXCLUSICE = 2;
 
 // Calculates the color contribution of a point light to a fragment.
 // Local illumination with Blinn-Phong lighting in world space.
