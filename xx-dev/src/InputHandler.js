@@ -10,15 +10,22 @@ export class InputState {
         this.colorTextureSwitch = false;
         this.specularTextureSwitch = false;
         this.normalTextureSwitch = false;
+        this.select = false;
+        this.selectX = -1;
+        this.selectY = -1;
     }
 }
 
 export class InputHandler {
     #rotationSpeed = 0.01
     #state = new InputState()
+    #mouseXOnLeftButtonDown = Number.MIN_VALUE;
+    #mouseYOnLeftButtonDown = Number.MIN_VALUE;
 
     constructor(canvas) {
-        canvas.addEventListener('pointermove', (e) => this.#handleMouseEvent(e));
+        canvas.addEventListener('pointermove', (e) => this.#handleMouseMoveEvent(e));
+        canvas.addEventListener('pointerdown', (e) => this.#handleMouseDownEvent(e));
+        canvas.addEventListener('pointerup', (e) => this.#handleMouseUpEvent(e));
         window.addEventListener('keydown', (e) => this.#handleKeyboardEvent(e, true));
         window.addEventListener('keyup', (e) => this.#handleKeyboardEvent(e, false));
     }
@@ -33,7 +40,27 @@ export class InputHandler {
         return currentState;
     }
 
-    #handleMouseEvent(event) {
+    #handleMouseDownEvent(event) {
+        if (event.button == 0) {
+            this.#mouseXOnLeftButtonDown = event.offsetX;
+            this.#mouseYOnLeftButtonDown = event.offsetY;
+        }
+    }
+
+    #handleMouseUpEvent(event) {
+        if (event.button == 0) {
+            if (Math.abs(event.offsetX - this.#mouseXOnLeftButtonDown) < 1 &&
+                Math.abs(event.offsetY - this.#mouseYOnLeftButtonDown) < 1) {
+                    this.#state.select = true;
+                    this.#state.selectX = event.offsetX;
+                    this.#state.selectY = event.offsetY;
+            }
+            this.#mouseXOnLeftButtonDown = Number.MIN_VALUE;;
+            this.#mouseYOnLeftButtonDown = Number.MIN_VALUE;;
+        }
+    }
+
+    #handleMouseMoveEvent(event) {
         const mouseDown = event.pointerType == 'mouse' ? (event.buttons & 1) !== 0 : true;
         if (mouseDown) {
             this.#state.rotateLeftRight += event.movementX * this.#rotationSpeed;

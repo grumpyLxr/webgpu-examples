@@ -4,6 +4,7 @@ export const vec3ByteLength = vec3.create().byteLength;
 export const mat3ByteLength = mat3.create().byteLength;
 export const mat4ByteLength = mat4.create().byteLength;
 export const i32ByteLength = 4;
+export const u32ByteLength = 4;
 export const u16ByteLength = 2;
 
 /**
