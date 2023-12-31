@@ -13,9 +13,9 @@ struct Camera {
 
 struct RenderOptions {
     // Boolean values used to debug rendering
-    useColorTexture: i32,
-    useSpecularTexture: i32,
-    useNormalTexture: i32,
+    colorTextureMode: i32,
+    specularTextureMode: i32,
+    normalTextureMode: i32,
 }
 @group(0) @binding(5) var<uniform> renderOptions : RenderOptions;
 
@@ -77,7 +77,11 @@ fn vertex_main(in: VertexIn) -> VertexOut {
     return output;
 }
 
-// Standard Fragment Shader: -----------------------------------------------------
+// Fragment Shader: -----------------------------------------------------
+
+override TEXTURE_MODE_NORMAL = 0;
+override TEXTURE_MODE_DISABLED = 1;
+override TEXTURE_MODE_EXCLUSICE = 3;
 
 // Calculates the color contribution of a point light to a fragment.
 // Local illumination with Blinn-Phong lighting in world space.
@@ -118,21 +122,28 @@ fn fragment_main(in: VertexOut) -> @location(0) vec4f {
 
     // we expect the specular strength to be in the red channel
     var specularStrength: f32;
-    if renderOptions.useSpecularTexture != 0 {
+    if renderOptions.specularTextureMode != TEXTURE_MODE_DISABLED {
         specularStrength = textureSample(specularTexture, texSampler, in.texCoord).r;
+        if renderOptions.specularTextureMode == TEXTURE_MODE_EXCLUSICE {
+            return vec4f(specularStrength, specularStrength, specularStrength, 1);
+        }
     } else {
         specularStrength = 1.0;
     }
 
     let btnMatrix = mat3x3f(in.texTangent, in.texBitangent, in.normal);
     var normalMapNormal: vec3f;
-    if renderOptions.useNormalTexture != 0 {
+    if renderOptions.normalTextureMode != TEXTURE_MODE_DISABLED {
         // Load normal from normal map texture and transform coordinates from [0.0, 1.0] to [-1.0, 1.0]. 
         // Normal Maps use the OpenGL coordinate system and to transfer them to the WebGPU/Vulkan 
         // coordinate system y has to be inverted.
         let normalMapColor = textureSample(normalTexture, texSampler, in.texCoord).rgb;
         normalMapNormal = normalize(normalMapColor * 2.0 - 1.0) * vec3(1.0, -1.0, 1.0);
         normalMapNormal = btnMatrix * normalMapNormal;
+
+        if renderOptions.normalTextureMode == TEXTURE_MODE_EXCLUSICE {
+            return vec4f(normalMapNormal / 0.5 + 0.5, 1);
+        }
     } else {
         normalMapNormal = btnMatrix * vec3(0.0, 0.0, 1.0);
     }
@@ -150,8 +161,12 @@ fn fragment_main(in: VertexOut) -> @location(0) vec4f {
     }
 
     var matColor: vec4f;
-    if renderOptions.useColorTexture != 0 {
+    if renderOptions.colorTextureMode != TEXTURE_MODE_DISABLED {
         matColor = textureSample(colorTexture, texSampler, in.texCoord);
+
+        if renderOptions.colorTextureMode == TEXTURE_MODE_EXCLUSICE {
+            return matColor;
+        }
     } else {
         matColor = vec4f(1.0, 1.0, 1.0, 1.0);
     }

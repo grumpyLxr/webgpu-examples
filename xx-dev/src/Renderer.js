@@ -4,7 +4,7 @@ import {
 } from '../imports/wgpu-matrix.module.js';
 import * as utils from './utils.js';
 import { Scene } from './Scene.js';
-import { StandardRenderPass } from './StandardRenderPass.js';
+import { StandardRenderPass, TextureRenderMode } from './StandardRenderPass.js';
 import { NormalsRenderPass } from './NormalsRenderPass.js';
 import { WireframeRenderPass } from './WireframeRenderPass.js';
 import { SelectRenderPass } from './SelectRenderPass.js';
@@ -52,6 +52,10 @@ export class Renderer {
         this.setSelectionMode(SelectionMode.Object);
         this.#firstSelectedVertex = 0;
         this.#numSelectedVertices = 0;
+
+        this.setColorTextureRenderMode(TextureRenderMode.Normal);
+        this.setSpecularTextureRenderMode(TextureRenderMode.Normal);
+        this.setNormalsTextureRenderMode(TextureRenderMode.Normal);
     }
 
     /**
@@ -61,13 +65,19 @@ export class Renderer {
      */
     updateWithInputState(inputState) {
         if (inputState.colorTextureSwitch) {
-            this.#standardRenderPass.setRenderColorTexture(!this.#standardRenderPass.getRenderColorTexture());
+            this.setColorTextureRenderMode(
+                this.#nextTextureRenderMode(this.#standardRenderPass.getColorTextureMode())
+            );
         }
         if (inputState.specularTextureSwitch) {
-            this.#standardRenderPass.setRenderSpecularTexture(!this.#standardRenderPass.getRenderSpecularTexture());
+            this.setSpecularTextureRenderMode(
+                this.#nextTextureRenderMode(this.#standardRenderPass.getSpecularTextureMode())
+            );
         }
         if (inputState.normalTextureSwitch) {
-            this.#standardRenderPass.setRenderNormalTexture(!this.#standardRenderPass.getRenderNormalTexture());
+            this.setNormalsTextureRenderMode(
+                this.#nextTextureRenderMode(this.#standardRenderPass.getNormalTextureMode())
+            );
         }
         if (inputState.select == true) {
             const x = Math.round(inputState.selectX);
@@ -82,10 +92,33 @@ export class Renderer {
         }
     }
 
+    setColorTextureRenderMode(mode) {
+        this.#standardRenderPass.setColorTextureMode(mode);
+        document.getElementById("tex-color-mode").textContent =
+            this.#standardRenderPass.getColorTextureMode();
+    }
+
+    setSpecularTextureRenderMode(mode) {
+        this.#standardRenderPass.setSpecularTextureMode(mode);
+        document.getElementById("tex-specular-mode").textContent =
+            this.#standardRenderPass.getSpecularTextureMode();
+    }
+
+    setNormalsTextureRenderMode(mode) {
+        this.#standardRenderPass.setNormalTextureMode(mode);
+        document.getElementById("tex-normal-mode").textContent =
+            this.#standardRenderPass.getNormalTextureMode();
+    }
+
+    #nextTextureRenderMode(m) {
+        if (m == TextureRenderMode.Normal) { return TextureRenderMode.Disabled; }
+        if (m == TextureRenderMode.Disabled) { return TextureRenderMode.Exclusive; }
+        if (m == TextureRenderMode.Exclusive) { return TextureRenderMode.Normal; }
+    }
+
     setSelectionMode(newMode) {
         this.#selectionMode = newMode;
-        const domDisplayElement = document.getElementById("selection-mode");
-        domDisplayElement.textContent = this.#selectionMode;
+        document.getElementById("selection-mode").textContent = this.#selectionMode;
     }
 
     async init() {

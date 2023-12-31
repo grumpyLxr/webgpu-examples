@@ -1,5 +1,11 @@
 import * as utils from './utils.js';
 
+export const TextureRenderMode = {
+    Normal: 0,
+    Disabled: 1,
+    Exclusive: 3,
+}
+
 /**
  * The standard render pass the renders the scene with lights, textures, etc.
  */
@@ -12,32 +18,32 @@ export class StandardRenderPass {
     #lightsBindGroup;
     #gpuRenderOptions;
 
-    #renderColorTexture = true;
-    #renderSpecularTexture = true;
-    #renderNormalTexture = true;
+    #colorTextureMode = TextureRenderMode.Normal;
+    #specularTextureMode = TextureRenderMode.Normal;
+    #normalTextureMode = TextureRenderMode.Normal;
 
-    getRenderColorTexture() {
-        return this.#renderColorTexture;
+    getColorTextureMode() {
+        return this.#colorTextureMode;
     }
 
-    setRenderColorTexture(value) {
-        this.#renderColorTexture = value;
+    setColorTextureMode(value) {
+        this.#colorTextureMode = value;
     }
 
-    getRenderSpecularTexture() {
-        return this.#renderSpecularTexture;
+    getSpecularTextureMode() {
+        return this.#specularTextureMode;
     }
 
-    setRenderSpecularTexture(value) {
-        this.#renderSpecularTexture = value;
+    setSpecularTextureMode(value) {
+        this.#specularTextureMode = value;
     }
 
-    getRenderNormalTexture() {
-        return this.#renderNormalTexture;
+    getNormalTextureMode() {
+        return this.#normalTextureMode;
     }
 
-    setRenderNormalTexture(value) {
-        this.#renderNormalTexture = value;
+    setNormalTextureMode(value) {
+        this.#normalTextureMode = value;
     }
 
     async init(gpuDevice, depthTexture, camera, lights, meshData) {
@@ -139,9 +145,9 @@ export class StandardRenderPass {
      * @param {GPUCommandEncoder} commandEncoder the command encoder to send commands to the GPU
      */
     renderFrame(drawingContext, commandEncoder) {
-        this.#gpuRenderOptions.setUseColorTexture(this.#renderColorTexture);
-        this.#gpuRenderOptions.setUseSpecularTexture(this.#renderSpecularTexture);
-        this.#gpuRenderOptions.setUseNormalTexture(this.#renderNormalTexture);
+        this.#gpuRenderOptions.setUseColorTexture(this.#colorTextureMode);
+        this.#gpuRenderOptions.setUseSpecularTexture(this.#specularTextureMode);
+        this.#gpuRenderOptions.setUseNormalTexture(this.#normalTextureMode);
 
         const passEncoder = commandEncoder.beginRenderPass({
             colorAttachments: [{
