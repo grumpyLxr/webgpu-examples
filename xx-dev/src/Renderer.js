@@ -78,6 +78,7 @@ export class Renderer {
         }
         if (inputState.selectionModeSwitch) {
             this.setSelectionMode((this.#selectionMode == SelectionMode.Face) ? SelectionMode.Object : SelectionMode.Face);
+            this.#selectVerticesFor(this.#firstSelectedVertex);
         }
     }
 
@@ -230,7 +231,9 @@ export class Renderer {
             this.#drawingContext,
             commandEncoder,
             this.#firstSelectedVertex,
-            this.#numSelectedVertices);
+            this.#numSelectedVertices,
+            this.#selectionMode == SelectionMode.Face
+        );
 
         // End frame by passing array of command buffers to command queue for execution
         this.#gpuDevice.queue.submit([commandEncoder.finish()]);

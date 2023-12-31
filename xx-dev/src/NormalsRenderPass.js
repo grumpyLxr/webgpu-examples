@@ -1,5 +1,11 @@
 import * as utils from './utils.js';
 
+const LineType = {
+    Normal: 1,
+    Tangent: 2,
+    Bitangent: 3,
+}
+
 /**
  * Render pass that renders normals, tangents and bitangent.
  */
@@ -29,7 +35,13 @@ export class NormalsRenderPass {
             vertex: {
                 module: shaderModule,
                 entryPoint: 'vertex_main',
-                buffers: vertexBufferLayout
+                buffers: vertexBufferLayout,
+                constants: {
+                    LINE_LENGTH: 0.25,
+                    NORMAL_VERTEXT_TYPE: LineType.Normal,
+                    TANGENT_VERTEXT_TYPE: LineType.Tangent,
+                    BITANGENT_VERTEXT_TYPE: LineType.Bitangent,
+                }
             },
             fragment: {
                 module: shaderModule,
@@ -64,10 +76,17 @@ export class NormalsRenderPass {
 
     #createVertexTypeBuffer(gpuDevice) {
         const buffer = gpuDevice.createBuffer({
-            size: 2 * utils.i32ByteLength,
+            size: 6 * utils.i32ByteLength,
             usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
         });
-        let content = [0, 1]
+        let content = [
+            (LineType.Normal << 16) | 0,
+            (LineType.Normal << 16) | LineType.Normal,
+            (LineType.Tangent << 16) | 0,
+            (LineType.Tangent << 16) | LineType.Tangent,
+            (LineType.Bitangent << 16) | 0,
+            (LineType.Bitangent << 16) | LineType.Bitangent
+        ]
         utils.copyToBuffer(gpuDevice, buffer, new Int32Array(content));
 
         const layout = {
@@ -89,8 +108,9 @@ export class NormalsRenderPass {
      * @param {GPUCommandEncoder} commandEncoder the command encoder to send commands to the GPU
      * @param {number} firstVertexToDraw the first vertex for which to draw the normal
      * @param {number} numVerticesToDraw the number of vertices for which to draw the normal
+     * @param {boolean} drawTangents true to also draw the tangent and bitangent that is used for normal maps
      */
-    renderFrame(drawingContext, commandEncoder, firstVertexToDraw, numVerticesToDraw) {
+    renderFrame(drawingContext, commandEncoder, firstVertexToDraw, numVerticesToDraw, drawTangents = false) {
         const passEncoder = commandEncoder.beginRenderPass({
             colorAttachments: [{
                 clearValue: [0, 0, 0, 1],
@@ -119,12 +139,12 @@ export class NormalsRenderPass {
 
             const mesh = meshList[i];
             const firstVertex = Math.max(firstVertexToDraw, mesh.firstVertex);
-            const lastVertex = Math.min(firstVertexToDraw + numVerticesToDraw, mesh.firstVertex +  mesh.vertexCount);
-            if(lastVertex <= firstVertex) {
+            const lastVertex = Math.min(firstVertexToDraw + numVerticesToDraw, mesh.firstVertex + mesh.vertexCount);
+            if (lastVertex <= firstVertex) {
                 continue;
             }
 
-            passEncoder.draw(2, lastVertex - firstVertex, 0, firstVertex);
+            passEncoder.draw(drawTangents ? 6 : 2, lastVertex - firstVertex, 0, firstVertex);
         }
 
         passEncoder.end();
