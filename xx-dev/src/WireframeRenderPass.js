@@ -81,8 +81,10 @@ export class WireframeRenderPass {
      * 
      * @param {GPUCanvasContext} drawingContext the canvas on which the frame is drawn
      * @param {GPUCommandEncoder} commandEncoder the command encoder to send commands to the GPU
+     * @param {number} firstVertexToDraw the first vertex to draw
+     * @param {number} numVerticesToDraw the number of vertices to draw
      */
-    renderFrame(drawingContext, commandEncoder) {
+    renderFrame(drawingContext, commandEncoder, firstVertexToDraw, numVerticesToDraw) {
         const passEncoder = commandEncoder.beginRenderPass({
             colorAttachments: [{
                 clearValue: [0, 0, 0, 1],
@@ -94,7 +96,7 @@ export class WireframeRenderPass {
                 view: this.#depthTexture.createView(),
                 depthClearValue: 1.0,
                 depthLoadOp: 'load',
-                depthStoreOp: 'discard',
+                depthStoreOp: 'store',
             }
         });
 
@@ -110,7 +112,12 @@ export class WireframeRenderPass {
             passEncoder.setBindGroup(bindGroup.number, bindGroup.group);
 
             const mesh = meshList[i];
-            passEncoder.drawIndexed(mesh.vertexCount * 2, 1, mesh.firstVertex * 2);
+            const firstVertex = Math.max(firstVertexToDraw, mesh.firstVertex);
+            const lastVertex = Math.min(firstVertexToDraw + numVerticesToDraw, mesh.firstVertex +  mesh.vertexCount);
+            if(lastVertex <= firstVertex) {
+                continue;
+            }
+            passEncoder.drawIndexed((lastVertex - firstVertex) * 2, 1, firstVertex * 2);
         }
 
         // End the render pass

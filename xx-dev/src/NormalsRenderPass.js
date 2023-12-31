@@ -87,8 +87,10 @@ export class NormalsRenderPass {
      * 
      * @param {GPUCanvasContext} drawingContext the canvas on which the frame is drawn
      * @param {GPUCommandEncoder} commandEncoder the command encoder to send commands to the GPU
+     * @param {number} firstVertexToDraw the first vertex for which to draw the normal
+     * @param {number} numVerticesToDraw the number of vertices for which to draw the normal
      */
-    renderFrame(drawingContext, commandEncoder) {
+    renderFrame(drawingContext, commandEncoder, firstVertexToDraw, numVerticesToDraw) {
         const passEncoder = commandEncoder.beginRenderPass({
             colorAttachments: [{
                 clearValue: [0, 0, 0, 1],
@@ -99,8 +101,8 @@ export class NormalsRenderPass {
             depthStencilAttachment: {
                 view: this.#depthTexture.createView(),
                 depthClearValue: 1.0,
-                depthLoadOp: 'clear',
-                depthStoreOp: 'discard',
+                depthLoadOp: 'load',
+                depthStoreOp: 'store',
             }
         });
 
@@ -116,7 +118,13 @@ export class NormalsRenderPass {
             passEncoder.setBindGroup(bindGroup.number, bindGroup.group);
 
             const mesh = meshList[i];
-            passEncoder.draw(2, mesh.vertexCount, 0, mesh.firstVertex);
+            const firstVertex = Math.max(firstVertexToDraw, mesh.firstVertex);
+            const lastVertex = Math.min(firstVertexToDraw + numVerticesToDraw, mesh.firstVertex +  mesh.vertexCount);
+            if(lastVertex <= firstVertex) {
+                continue;
+            }
+
+            passEncoder.draw(2, lastVertex - firstVertex, 0, firstVertex);
         }
 
         passEncoder.end();

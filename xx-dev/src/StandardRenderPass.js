@@ -145,7 +145,7 @@ export class StandardRenderPass {
 
         const passEncoder = commandEncoder.beginRenderPass({
             colorAttachments: [{
-                clearValue: { r: 0.0, g: 0.5, b: 1.0, a: 1.0 },
+                clearValue: { r: 0.2, g: 0.2, b: 0.2, a: 1.0 },
                 loadOp: 'clear',
                 storeOp: 'store',
                 view: drawingContext.getCurrentTexture().createView()

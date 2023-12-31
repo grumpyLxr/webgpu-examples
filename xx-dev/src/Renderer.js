@@ -7,6 +7,7 @@ import { Scene } from './Scene.js';
 import { StandardRenderPass } from './StandardRenderPass.js';
 import { NormalsRenderPass } from './NormalsRenderPass.js';
 import { WireframeRenderPass } from './WireframeRenderPass.js';
+import { SelectRenderPass } from './SelectRenderPass.js';
 
 export class Renderer {
     #scene;
@@ -20,6 +21,11 @@ export class Renderer {
     #standardRenderPass;
     #normalsRenderPass;
     #wireframeRenderPass;
+    #selectRenderPass;
+
+    #selectObjectAt = null;
+    #firstSelectedVertex = 0;
+    #numSelectedVertices = 0;
 
     /**
      * Creates a new Renderer to render the given scene.
@@ -34,6 +40,7 @@ export class Renderer {
         this.#standardRenderPass = new StandardRenderPass();
         this.#normalsRenderPass = new NormalsRenderPass();
         this.#wireframeRenderPass = new WireframeRenderPass();
+        this.#selectRenderPass = new SelectRenderPass();
     }
 
     /**
@@ -50,6 +57,13 @@ export class Renderer {
         }
         if (inputState.normalTextureSwitch) {
             this.#standardRenderPass.setRenderNormalTexture(!this.#standardRenderPass.getRenderNormalTexture());
+        }
+        if (inputState.select == true) {
+            const x = Math.round(inputState.selectX);
+            const y = Math.round(inputState.selectY);
+            if (x >= 0 && x < this.#drawingContext.canvas.width && y >= 0 && y < this.#drawingContext.canvas.height) {
+                this.#selectObjectAt = { x: x, y: y };
+            }
         }
     }
 
@@ -162,13 +176,21 @@ export class Renderer {
         await this.#standardRenderPass.init(gpuDevice, depthTexture, this.#gpuCamera, this.#gpuLights, this.#gpuMeshData);
         await this.#normalsRenderPass.init(gpuDevice, depthTexture, this.#gpuCamera, this.#gpuMeshData);
         await this.#wireframeRenderPass.init(gpuDevice, depthTexture, this.#gpuCamera, this.#gpuMeshData);
+        await this.#selectRenderPass.init(gpuDevice, depthTexture, this.#gpuCamera, this.#gpuMeshData);
     }
 
     /**
      * Renders the next frame.
      */
-    renderFrame() {
+    async renderFrame() {
         this.#updateGpuData(this.#gpuCamera, this.#gpuLights);
+
+        if (this.#selectObjectAt !== null) {
+            const x = this.#selectObjectAt.x;
+            const y = this.#selectObjectAt.y;
+            this.#selectObjectAt = null;
+            this.#selectObject(x, y)
+        }
 
         // Create GPUCommandEncoder to issue commands to the GPU
         // Note: render pass descriptor, command encoder, etc. are destroyed after use, fresh one needed for each frame.
@@ -178,8 +200,17 @@ export class Renderer {
 
         // First render wireframes and then normals. This way the normals are rendered above
         // the wireframe and are visible at all times.
-        this.#wireframeRenderPass.renderFrame(this.#drawingContext, commandEncoder);
-        this.#normalsRenderPass.renderFrame(this.#drawingContext, commandEncoder);
+        this.#wireframeRenderPass.renderFrame(
+            this.#drawingContext,
+            commandEncoder,
+            this.#firstSelectedVertex,
+            this.#numSelectedVertices
+        );
+        this.#normalsRenderPass.renderFrame(
+            this.#drawingContext,
+            commandEncoder,
+            this.#firstSelectedVertex,
+            this.#numSelectedVertices);
 
         // End frame by passing array of command buffers to command queue for execution
         this.#gpuDevice.queue.submit([commandEncoder.finish()]);
@@ -206,6 +237,26 @@ export class Renderer {
             const normalMatrix = mat3.fromMat4(mat4.transpose(mat4.inverse(modelMatrix)));
             m.setModelMatrix(modelMatrix);
             m.setNormalMatrix(normalMatrix);
+        }
+    }
+
+    async #selectObject(x, y) {
+        // console.log("Selecting object at x=" + x + ",y=" + y);
+
+        const commandEncoder = this.#gpuDevice.createCommandEncoder();
+        this.#selectRenderPass.renderFrame(commandEncoder);
+        this.#gpuDevice.queue.submit([commandEncoder.finish()]);
+        await this.#gpuDevice.queue.onSubmittedWorkDone();
+
+        const triangleId = await this.#selectRenderPass.getSelectedTriangleId(x, y);
+        // console.log("Selected triangle: " + triangleId);
+
+        if (triangleId < 0) {
+            this.#firstSelectedVertex = 0;
+            this.#numSelectedVertices = 0;
+        } else {
+            this.#firstSelectedVertex = triangleId * 3;
+            this.#numSelectedVertices = 3;
         }
     }
 }
