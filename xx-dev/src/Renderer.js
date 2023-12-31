@@ -78,7 +78,7 @@ export class Renderer {
         }
         if (inputState.selectionModeSwitch) {
             this.setSelectionMode((this.#selectionMode == SelectionMode.Face) ? SelectionMode.Object : SelectionMode.Face);
-            this.#selectVerticesFor(this.#firstSelectedVertex);
+            this.#selectVerticesFor(-1); // select nothing
         }
     }
 
