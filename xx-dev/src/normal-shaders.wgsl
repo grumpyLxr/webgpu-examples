@@ -21,7 +21,7 @@ struct VertexIn {
     @location(15) vertexType: i32,
 }
 
-const lineLength:f32 = 0.5;
+const lineLength:f32 = 0.25;
 
 @vertex
 fn vertex_main(in: VertexIn) -> @builtin(position) vec4f {

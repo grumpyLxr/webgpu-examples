@@ -9,6 +9,11 @@ import { NormalsRenderPass } from './NormalsRenderPass.js';
 import { WireframeRenderPass } from './WireframeRenderPass.js';
 import { SelectRenderPass } from './SelectRenderPass.js';
 
+const SelectionMode = {
+    Face: 'Face',
+    Object: 'Object'
+}
+
 export class Renderer {
     #scene;
     #gpuDevice;
@@ -23,9 +28,10 @@ export class Renderer {
     #wireframeRenderPass;
     #selectRenderPass;
 
-    #selectObjectAt = null;
-    #firstSelectedVertex = 0;
-    #numSelectedVertices = 0;
+    #selectObjectAt;
+    #selectionMode;
+    #firstSelectedVertex;
+    #numSelectedVertices;
 
     /**
      * Creates a new Renderer to render the given scene.
@@ -41,6 +47,11 @@ export class Renderer {
         this.#normalsRenderPass = new NormalsRenderPass();
         this.#wireframeRenderPass = new WireframeRenderPass();
         this.#selectRenderPass = new SelectRenderPass();
+
+        this.#selectObjectAt = null;
+        this.setSelectionMode(SelectionMode.Object);
+        this.#firstSelectedVertex = 0;
+        this.#numSelectedVertices = 0;
     }
 
     /**
@@ -65,6 +76,15 @@ export class Renderer {
                 this.#selectObjectAt = { x: x, y: y };
             }
         }
+        if (inputState.selectionModeSwitch) {
+            this.setSelectionMode((this.#selectionMode == SelectionMode.Face) ? SelectionMode.Object : SelectionMode.Face);
+        }
+    }
+
+    setSelectionMode(newMode) {
+        this.#selectionMode = newMode;
+        const domDisplayElement = document.getElementById("selection-mode");
+        domDisplayElement.textContent = this.#selectionMode;
     }
 
     async init() {
@@ -251,12 +271,40 @@ export class Renderer {
         const triangleId = await this.#selectRenderPass.getSelectedTriangleId(x, y);
         // console.log("Selected triangle: " + triangleId);
 
-        if (triangleId < 0) {
+        this.#selectVerticesFor(triangleId * 3);
+    }
+
+    #selectVerticesFor(selectedVertex) {
+        if (selectedVertex < 0) {
+            // Nothing selected
+            this.#firstSelectedVertex = 0;
+            this.#numSelectedVertices = 0;
+            return;
+        }
+
+        let newFirstSelectedVertex = 0;
+        let newNumSelectedVertices = 0;
+        if (this.#selectionMode == SelectionMode.Face) {
+            newFirstSelectedVertex = selectedVertex;
+            newNumSelectedVertices = 3;
+        } else {
+            for (let m of this.#gpuMeshData.meshList) {
+                if (selectedVertex >= m.firstVertex && selectedVertex < m.firstVertex + m.vertexCount) {
+                    newFirstSelectedVertex = m.firstVertex;
+                    newNumSelectedVertices = m.vertexCount;
+                    break;
+                }
+            }
+        }
+
+        if (newFirstSelectedVertex == this.#firstSelectedVertex &&
+            newNumSelectedVertices == this.#numSelectedVertices) {
+            // Was already selected -> unselect
             this.#firstSelectedVertex = 0;
             this.#numSelectedVertices = 0;
         } else {
-            this.#firstSelectedVertex = triangleId * 3;
-            this.#numSelectedVertices = 3;
+            this.#firstSelectedVertex = newFirstSelectedVertex;
+            this.#numSelectedVertices = newNumSelectedVertices;
         }
     }
 }

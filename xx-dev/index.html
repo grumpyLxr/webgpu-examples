@@ -16,6 +16,11 @@
             font-style: normal;
         }
 
+        strong {
+            color: lightgreen;
+            font-weight: normal;
+        }
+
         #main-div {
             text-align: center
         }
@@ -38,12 +43,13 @@
 <body>
     <div id="main-div">
         <canvas id="gpu-canvas" width="1280" height="720"></canvas>
-        <p>Use <em>WASD</em> to move, <br>
-            <em>left mouse button</em> to look around,<br>
-            <em>R</em> to reset the camera,<br>
-            <em>C</em> to enable or disable color texture,<br>
-            <em>V</em> to enable or disable specular texture,<br>
-            <em>B</em> to enable or disable normal texture.
+        <p>Use <em>WASD</em> to move, <em>Left mouse button and mouse move</em> to look around and
+            <em>R</em> to reset the camera.<br>
+            <em>C</em> to enable or disable color texture.<br>
+            <em>V</em> to enable or disable specular texture.<br>
+            <em>B</em> to enable or disable normal texture.<br>
+            <em>Left mouse button</em> to select objects,
+            <em>F</em> to toggle selection mode (current mode: <strong id="selection-mode">selection-mode</strong>).
         </p>
     </div>
     <div id="error-message"></div>

@@ -10,6 +10,7 @@ export class InputState {
         this.colorTextureSwitch = false;
         this.specularTextureSwitch = false;
         this.normalTextureSwitch = false;
+        this.selectionModeSwitch = false;
         this.select = false;
         this.selectX = -1;
         this.selectY = -1;
@@ -51,9 +52,9 @@ export class InputHandler {
         if (event.button == 0) {
             if (Math.abs(event.offsetX - this.#mouseXOnLeftButtonDown) < 1 &&
                 Math.abs(event.offsetY - this.#mouseYOnLeftButtonDown) < 1) {
-                    this.#state.select = true;
-                    this.#state.selectX = event.offsetX;
-                    this.#state.selectY = event.offsetY;
+                this.#state.select = true;
+                this.#state.selectX = event.offsetX;
+                this.#state.selectY = event.offsetY;
             }
             this.#mouseXOnLeftButtonDown = Number.MIN_VALUE;;
             this.#mouseYOnLeftButtonDown = Number.MIN_VALUE;;
@@ -101,6 +102,10 @@ export class InputHandler {
                 break;
             case 'KeyB':
                 this.#state.normalTextureSwitch ||= value;
+                handled = true;
+                break;
+            case 'KeyF':
+                this.#state.selectionModeSwitch ||= value;
                 handled = true;
                 break;
         }
