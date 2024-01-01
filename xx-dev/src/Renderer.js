@@ -178,6 +178,11 @@ export class Renderer {
                 },
                 setNormalMatrix: function (m) {
                     utils.copyToBuffer(gpuDevice, modelMatricesBuffer, m, this.bufferOffset + utils.mat4ByteLength);
+                },
+                createBindGroup: function(renderPipeline, groupNumber) {
+                    return utils.createBindGroup(gpuDevice, renderPipeline, groupNumber, [{
+                        buffer: this.buffer, offset: this.bufferOffset, size: this.byteLength
+                    }]);
                 }
             });
             bufferOffset += bindGroupByteLength;

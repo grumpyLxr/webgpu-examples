@@ -65,13 +65,9 @@ export class NormalsRenderPass {
         ]);
 
         // Create BindGroups for the model matrics:
-        this.#modelMatrixBindGroups = []
-        for (let mMatrix of meshData.modelMatrices) {
-            const bg = utils.createBindGroup(gpuDevice, this.#renderPipeline, 1, [{
-                buffer: mMatrix.buffer, offset: mMatrix.bufferOffset, size: mMatrix.byteLength
-            }]);
-            this.#modelMatrixBindGroups.push(bg);
-        }
+        this.#modelMatrixBindGroups = meshData.modelMatrices.map(
+            m => m.createBindGroup(this.#renderPipeline, 1)
+        );
     }
 
     #createVertexTypeBuffer(gpuDevice) {

@@ -124,13 +124,9 @@ export class StandardRenderPass {
         ]);
 
         // Create BindGroups for the model matrics.
-        this.#modelMatrixBindGroups = []
-        for (let mMatrix of meshData.modelMatrices) {
-            const bg = utils.createBindGroup(gpuDevice, this.#renderPipeline, 1, [{
-                buffer: mMatrix.buffer, offset: mMatrix.bufferOffset, size: mMatrix.byteLength
-            }]);
-            this.#modelMatrixBindGroups.push(bg);
-        }
+        this.#modelMatrixBindGroups = meshData.modelMatrices.map(
+            m => m.createBindGroup(this.#renderPipeline, 1)
+        );
 
         // Create a BindGroup for the lights.
         this.#lightsBindGroup = utils.createBindGroup(gpuDevice, this.#renderPipeline, 2, [
