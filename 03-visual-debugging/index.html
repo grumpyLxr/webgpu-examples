@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>WebGPU 03 - Visual Debugging</title>
+    <script type="module" src="src/main.js" defer></script>
+    <style>
+        body {
+            background-color: black;
+            color: lightgray;
+        }
+
+        em {
+            color: lightcoral;
+            font-style: normal;
+        }
+
+        strong {
+            color: lightgreen;
+            font-weight: normal;
+        }
+
+        #main-div {
+            margin: auto;
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: max-content;
+            text-align: center;
+        }
+
+        #error-message {
+            color: red;
+            display: none;
+            margin: 2em;
+            text-align: center
+        }
+
+        #gpu-canvas {
+            border-width: 2px;
+            border-color: white;
+            border-style: solid;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="main-div">
+        <canvas id="gpu-canvas" width="1280" height="720"></canvas>
+        <div>
+            <button onclick="
+                if(document.fullscreenElement) {document.exitFullscreen()} 
+                else {document.body.requestFullscreen()}">Toggle Fullscreen</button>
+        </div>
+        <p>Use <em>WASD</em> to move, <em>Left mouse button and mouse move</em> to look around and
+            <em>R</em> to reset the camera.<br>
+            <em>C</em> to set color texture mode
+            (current mode: <strong id="tex-color-mode">tex-color-mode</strong>).<br>
+            <em>V</em> to set specular texture mode
+            (current mode: <strong id="tex-specular-mode">tex-specular-mode</strong>).<br>
+            <em>B</em> to set normal texture mode
+            (current mode: <strong id="tex-normal-mode">tex-normal-mode</strong>).<br>
+            <em>Left mouse button</em> to select objects,
+            <em>F</em> to toggle selection mode (current mode: <strong id="selection-mode">selection-mode</strong>).
+        </p>
+    </div>
+    <div id="error-message"></div>
+</body>
+
+</html>
