@@ -50,6 +50,11 @@
 <body>
     <div id="main-div">
         <canvas id="gpu-canvas" width="1280" height="720"></canvas>
+        <div>
+            <button onclick="
+                if(document.fullscreenElement) {document.exitFullscreen()} 
+                else {document.body.requestFullscreen()}">Toggle Fullscreen</button>
+        </div>
         <p>Use <em>WASD</em> to move, <em>Left mouse button and mouse move</em> to look around and
             <em>R</em> to reset the camera.<br>
             <em>C</em> to set color texture mode
