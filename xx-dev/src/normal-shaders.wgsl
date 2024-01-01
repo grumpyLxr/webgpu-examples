@@ -38,6 +38,9 @@ struct VertexOut {
 fn vertex_main(in: VertexIn) -> VertexOut {
     var out: VertexOut;
 
+    // Lower 16 Bits contain the vertex type, uper 16 bits contain the line type.
+    // The line type is the same for the two vertices that define a line.
+    // The vertex type is different for two vertices that define a line.
     let vertexType = (in.vertexAndLineType << 16) >> 16;
     let lineType = (in.vertexAndLineType >> 16);
 

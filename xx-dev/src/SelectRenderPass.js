@@ -124,6 +124,12 @@ export class SelectRenderPass {
             });
     }
 
+    /**
+     * Returns the triange id that was selected. Must be called after renderFrame().
+     * @param {number} x the x coordinate in screen coordinates
+     * @param {number} y the y coordinate in screen coordinates
+     * @returns {number} the triangle id
+     */
     async getSelectedTriangleId(x, y) {
         // Map the triangleIdBuffer so that it can be read from the CPU.
         await this.#triangleIdBuffer.mapAsync(GPUMapMode.READ);
