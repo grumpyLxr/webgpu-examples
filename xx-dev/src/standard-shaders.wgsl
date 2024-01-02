@@ -93,27 +93,33 @@ fn calcPointLight(
     matSpecularStrength: f32,
     matSpecularShininess: f32
 ) -> vec3f {
+    const black = vec3(0.0, 0.0, 0.0);
     let relativeLightPosition = light.position - fragmentPosition;
     let lightDistance = length(relativeLightPosition);
 
     var resultLightColor: vec3f;
     if light.range < lightDistance {
-        return vec3(0.0, 0.0, 0.0);
-    } else {
-        let lightStrength = (light.range - lightDistance) / light.range; // linear falloff
-        let lightDirection = normalize(relativeLightPosition);
+        return black;
+    }
 
-        let ambientColor = light.color * light.ambientStrength;
+    let lightStrength = (light.range - lightDistance) / light.range; // linear falloff
+    let lightDirection = normalize(relativeLightPosition);
 
-        let diffuseFactor = max(dot(lightDirection, fragmentNormal), 0.0);
-        let diffuseColor = light.color * light.diffuseStrength * diffuseFactor;
+    let ambientColor = light.color * light.ambientStrength;
 
+    let diffuseFactor = max(dot(lightDirection, fragmentNormal), 0.0);
+    let diffuseColor = light.color * light.diffuseStrength * diffuseFactor;
+
+    // Do not calculate the specular factor only if the light is behind the face.
+    // This is why we check if the diffuseFactor is positive.
+    var specularColor = black;
+    if diffuseFactor > 0.0 {
         let halfwayDirection = normalize(lightDirection + viewDirection);
         let specularFactor = pow(max(dot(fragmentNormal, halfwayDirection), 0.0), matSpecularShininess);
-        let specularColor = light.color * matSpecularStrength * light.specularStrength * specularFactor;
-
-        return (ambientColor + diffuseColor + specularColor) * lightStrength;
+        specularColor = light.color * matSpecularStrength * light.specularStrength * specularFactor;
     }
+
+    return (ambientColor + diffuseColor + specularColor) * lightStrength;
 }
 
 @fragment
