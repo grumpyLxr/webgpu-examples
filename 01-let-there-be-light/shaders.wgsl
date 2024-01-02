@@ -88,8 +88,8 @@ fn calcPointLight(
         let diffuseFactor = max(dot(lightDirection, fragmentNormal), 0.0);
         let diffuseColor = light.color * light.diffuseStrength * diffuseFactor;
 
-        // Do not calculate the specular factor only if the light is behind the face.
-        // This is why we check if the diffuseFactor is positive.
+        // We check if the diffuseFactor is positive to not calculate the specular color 
+        // if the light is behind the surface.
         var specularColor = black;
         if diffuseFactor > 0.0 {
             let halfwayDirection = normalize(lightDirection + viewDirection);

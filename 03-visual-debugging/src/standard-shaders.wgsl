@@ -100,26 +100,26 @@ fn calcPointLight(
     var resultLightColor: vec3f;
     if light.range < lightDistance {
         return black;
-    } else {
-        let lightStrength = (light.range - lightDistance) / light.range; // linear falloff
-        let lightDirection = normalize(relativeLightPosition);
-
-        let ambientColor = light.color * light.ambientStrength;
-
-        let diffuseFactor = max(dot(lightDirection, fragmentNormal), 0.0);
-        let diffuseColor = light.color * light.diffuseStrength * diffuseFactor;
-
-        // Do not calculate the specular factor only if the light is behind the face.
-        // This is why we check if the diffuseFactor is positive.
-        var specularColor = black;
-        if diffuseFactor > 0.0 {
-            let halfwayDirection = normalize(lightDirection + viewDirection);
-            let specularFactor = pow(max(dot(fragmentNormal, halfwayDirection), 0.0), matSpecularShininess);
-            specularColor = light.color * matSpecularStrength * light.specularStrength * specularFactor;
-        }
-
-        return (ambientColor + diffuseColor + specularColor) * lightStrength;
     }
+
+    let lightStrength = (light.range - lightDistance) / light.range; // linear falloff
+    let lightDirection = normalize(relativeLightPosition);
+
+    let ambientColor = light.color * light.ambientStrength;
+
+    let diffuseFactor = max(dot(lightDirection, fragmentNormal), 0.0);
+    let diffuseColor = light.color * light.diffuseStrength * diffuseFactor;
+
+    // We check if the diffuseFactor is positive to not calculate the specular color 
+    // if the light is behind the surface.
+    var specularColor = black;
+    if diffuseFactor > 0.0 {
+        let halfwayDirection = normalize(lightDirection + viewDirection);
+        let specularFactor = pow(max(dot(fragmentNormal, halfwayDirection), 0.0), matSpecularShininess);
+        specularColor = light.color * matSpecularStrength * light.specularStrength * specularFactor;
+    }
+
+    return (ambientColor + diffuseColor + specularColor) * lightStrength;
 }
 
 @fragment
